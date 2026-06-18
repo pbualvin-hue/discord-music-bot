@@ -1,0 +1,34 @@
+# 環境變數（含 Token，絕對不可上傳）
+.env
+
+# YouTube Cookies（含帳號登入資訊）
+cookies.txt
+
+# 虛擬環境
+.venv/
+
+# Python 快取
+__pycache__/
+*.py[cod]
+*.pyo
+
+# 系統檔案
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Log 檔
+*.log
+
+# SQLite 資料庫（包含播放統計，本地資料）
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# 音效檔（放在 sounds/，.gitkeep 保留目錄）
+sounds/*.mp3
+sounds/*.wav
+sounds/*.ogg
