@@ -4,15 +4,16 @@ REM  一鍵更新 Discord Music Bot（雲端伺服器）
 REM  作用：SSH 進伺服器 → 升級 yt-dlp 與相依套件 → 重啟 Bot
 REM  用途：YouTube 改版導致無法播放時，雙擊此檔即可修復
 REM
-REM  首次使用前，如伺服器資訊有變，請改下方三個變數。
+REM  【使用前】把下方 SERVER_IP 改成你的伺服器 IP，
+REM            然後把本檔複製成 update.bat（去掉 .example）。
 REM ============================================================
 
 setlocal
 chcp 65001 >nul
 
-REM ── 伺服器設定（如有變更請修改）──────────────────────
+REM ── 伺服器設定（請修改）──────────────────────────────
 set SERVER_USER=ubuntu
-set SERVER_IP=161.33.147.103
+set SERVER_IP=YOUR_SERVER_IP
 set SSH_KEY=%USERPROFILE%\.ssh\oracle.key
 REM ─────────────────────────────────────────────────────
 

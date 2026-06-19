@@ -97,7 +97,7 @@ YouTube Cookie 的有效期通常為數週到數月。若出現 429 或「登入
    # 在 WSL 本機執行
    scp -i ~/.ssh/oracle.key \
      /mnt/c/Users/Hen/Downloads/cookies.txt \
-     ubuntu@161.33.147.103:~/discord-music-bot/cookies.txt
+     ubuntu@YOUR_SERVER_IP:~/discord-music-bot/cookies.txt
    ```
 4. 重啟 Bot：`sudo systemctl restart music-bot`
 
@@ -152,7 +152,7 @@ sudo apt clean
 
 | 項目 | 資訊 |
 |------|------|
-| 伺服器 IP | `161.33.147.103` |
+| 伺服器 IP | `YOUR_SERVER_IP`（自行填入） |
 | SSH Key 位置 | `~/.ssh/oracle.key`（WSL 本機） |
 | Bot 目錄 | `~/discord-music-bot`（伺服器上） |
 | systemd 服務名稱 | `music-bot` |
@@ -162,7 +162,7 @@ sudo apt clean
 
 ```bash
 # 連線伺服器（在 WSL 中執行）
-ssh -i ~/.ssh/oracle.key ubuntu@161.33.147.103
+ssh -i ~/.ssh/oracle.key ubuntu@YOUR_SERVER_IP
 ```
 
 ### 更新 Bot 程式碼
@@ -220,7 +220,7 @@ discord-music-bot/
 ├── utils/
 │   ├── logger.py
 │   └── permissions.py
-├── docs/user_manual.html           # 完整說明書（可列印為 PDF）
+├── docs/index.html                 # 互動式使用手冊（GitHub Pages）
 ├── data/                           # SQLite DB（不入 git）
 ├── sounds/                         # 入場音效（選用）
 └── scripts/

@@ -1,6 +1,9 @@
 # 環境變數（含 Token，絕對不可上傳）
 .env
 
+# 一鍵更新工具（含真實伺服器 IP，本機保留，repo 只放 update.bat.example）
+update.bat
+
 # YouTube Cookies（含帳號登入資訊）
 cookies.txt
 
