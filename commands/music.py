@@ -51,6 +51,7 @@ from services.bilibili_service import (
     search_bilibili,
     strip_bili_prefix,
 )
+from services.spotify_service import is_spotify_url, resolve_spotify
 from services.youtube_service import (
     get_playlist_songs,
     is_playlist_url,
@@ -512,9 +513,9 @@ class MusicCog(commands.Cog, name="Music"):
 
     # ── /play ─────────────────────────────────────────────────────────
 
-    @app_commands.command(name="play", description="播放音樂 — YT/Bilibili/SoundCloud 連結、Playlist 或關鍵字")
+    @app_commands.command(name="play", description="播放音樂 — YT/Bilibili/SoundCloud/Spotify 連結、Playlist 或關鍵字")
     @app_commands.describe(
-        query="連結（YT/Bilibili/SoundCloud/Playlist）或搜尋關鍵字",
+        query="連結（YT/Bilibili/SoundCloud/Spotify/Playlist）或搜尋關鍵字",
         source="指定來源；不選＝自動判定",
         position="插播位置：排到最後（預設）、下一首、立即播放",
         message="附上留言，顯示在 Now Playing 卡片上",
@@ -556,7 +557,9 @@ class MusicCog(commands.Cog, name="Music"):
         url_mode = is_url(query)
         eff, kw = source, query
         if source == "auto":
-            if is_bilibili_url(query):
+            if is_spotify_url(query):
+                eff = "spotify"
+            elif is_bilibili_url(query):
                 eff = "bilibili"
             elif is_soundcloud_url(query):
                 eff = "soundcloud"
@@ -569,8 +572,36 @@ class MusicCog(commands.Cog, name="Music"):
                 else:
                     eff = "youtube"
 
+        # ── Spotify (track → 1 song, album/playlist → many) ─────────────
+        if eff == "spotify":
+            songs = await resolve_spotify(query, requester)
+            if not songs:
+                await interaction.followup.send("❌ 無法解析 Spotify 連結。")
+                return
+            if len(songs) == 1:
+                song = songs[0]
+                if position in ("next", "now"):
+                    ok = self.player.add_to_front(guild_id, song)
+                else:
+                    ok = self.player.add_to_queue(guild_id, song)
+                if not ok:
+                    await interaction.followup.send("❌ Queue 已達上限。")
+                    return
+                if position == "now" and was_active:
+                    self.player.skip(guild_id)
+                if was_active:
+                    await interaction.followup.send(
+                        f"✅ 已加入 Queue（Spotify）：**{song.title}**"
+                    )
+            else:
+                added = self.player.add_songs_to_queue(guild_id, songs)
+                suffix = f"（共 {len(songs)} 首，已達上限）" if added < len(songs) else ""
+                await interaction.followup.send(
+                    f"🎧 已從 Spotify 加入 **{added}** 首到 Queue{suffix}"
+                )
+
         # ── Playlist (YouTube only) ─────────────────────────────────────
-        if url_mode and eff == "youtube" and is_playlist_url(query):
+        elif url_mode and eff == "youtube" and is_playlist_url(query):
             songs = await get_playlist_songs(query, requester)
             if not songs:
                 await interaction.followup.send("❌ 無法解析 Playlist。")
@@ -1302,6 +1333,7 @@ class MusicCog(commands.Cog, name="Music"):
             name="▶️ 播放控制", inline=False,
             value=(
                 "`/play <連結 · Playlist · 關鍵字>`\n"
+                "　🔹 連結支援 YouTube／Bilibili／SoundCloud／**Spotify**（轉 YT 播放）\n"
                 "　🔹 `來源` 下拉：YouTube／Bilibili／SoundCloud（不選＝自動判定）\n"
                 "　🔹 `插播` 下拉：排到最後／下一首／立即播放\n"
                 "`/pause`  `/resume`  `/skip`（DJ/點歌者）  `/stop`（DJ）"

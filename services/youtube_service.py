@@ -239,11 +239,45 @@ async def get_playlist_songs(url: str, requester: str) -> list[Song]:
         return []
 
 
+async def youtube_stream_from_query(query: str) -> Optional[str]:
+    """Search YouTube for *query* and return the top result's stream URL.
+    Used to resolve Spotify tracks (DRM) to a playable YouTube match at play time."""
+    loop = asyncio.get_running_loop()
+
+    def _run() -> Optional[str]:
+        with yt_dlp.YoutubeDL(_build_opts(_YDL_STREAM)) as ydl:
+            try:
+                info = ydl.extract_info(f"ytsearch1:{query}", download=False)
+            except yt_dlp.utils.DownloadError as exc:
+                logger.error("YouTube 比對失敗 '%s'：%s", query, exc)
+                return None
+            if not info:
+                return None
+            if "entries" in info:
+                entries = [e for e in info["entries"] if e]
+                if not entries:
+                    return None
+                info = entries[0]
+            return info.get("url")
+
+    try:
+        async with _EXTRACT_SEM:
+            return await asyncio.wait_for(
+                loop.run_in_executor(None, _run), timeout=_YDL_TIMEOUT
+            )
+    except asyncio.TimeoutError:
+        logger.error("youtube_stream_from_query timed out for: %s", query)
+        return None
+
+
 async def get_stream_url(song: Song) -> Optional[str]:
     """Fetch a fresh direct audio stream URL just before playback."""
     if song.source == "bilibili":
         from services.bilibili_service import get_bilibili_stream
         return await get_bilibili_stream(song)
+    if song.source == "spotify":
+        # DRM — resolve to a YouTube match (title is "artist - track")
+        return await youtube_stream_from_query(song.title)
 
     loop = asyncio.get_running_loop()
 
