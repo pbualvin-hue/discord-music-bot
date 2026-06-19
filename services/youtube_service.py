@@ -95,20 +95,23 @@ def _thumbnail_from_id(video_id: str) -> str:
     return f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg" if video_id else ""
 
 
-def _make_song(info: dict, requester: str) -> Song:
+def _make_song(info: dict, requester: str, source: str = "youtube") -> Song:
     video_id = info.get("id") or ""
-    thumbnail = info.get("thumbnail") or _thumbnail_from_id(video_id)
+    thumbnail = info.get("thumbnail") or (
+        _thumbnail_from_id(video_id) if source == "youtube" else ""
+    )
     return Song(
         title=info.get("title") or "Unknown",
         url=info.get("webpage_url") or info.get("url") or "",
         duration=int(info.get("duration") or 0),
         requester=requester,
         thumbnail=thumbnail,
+        source=source,
     )
 
 
-async def search_song(query: str, requester: str) -> Optional[Song]:
-    """Resolve a YouTube URL or search keyword to a single Song."""
+async def search_song(query: str, requester: str, source: str = "youtube") -> Optional[Song]:
+    """Resolve a YouTube/SoundCloud URL or search keyword to a single Song."""
     loop = asyncio.get_running_loop()
 
     def _run() -> Optional[Song]:
@@ -133,7 +136,7 @@ async def search_song(query: str, requester: str) -> Optional[Song]:
                 if not entries:
                     return None
                 info = entries[0]
-            return _make_song(info, requester)
+            return _make_song(info, requester, source)
 
     try:
         async with _EXTRACT_SEM:
@@ -280,3 +283,49 @@ def is_url(text: str) -> bool:
 
 def is_playlist_url(url: str) -> bool:
     return "playlist?list=" in url or "&list=" in url
+
+
+def is_soundcloud_url(text: str) -> bool:
+    return "soundcloud.com/" in text
+
+
+async def search_soundcloud(query: str, requester: str, count: int = 5) -> list[Song]:
+    """Return up to *count* SoundCloud search results for a keyword."""
+    loop = asyncio.get_running_loop()
+
+    def _run() -> list[Song]:
+        with yt_dlp.YoutubeDL(_build_opts(_YDL_MULTI)) as ydl:
+            try:
+                info = ydl.extract_info(f"scsearch{count}:{query}", download=False)
+            except yt_dlp.utils.DownloadError as exc:
+                logger.error("SoundCloud 搜尋失敗：%s", exc)
+                return []
+            if not info or "entries" not in info:
+                return []
+            songs: list[Song] = []
+            for entry in info["entries"]:
+                if not entry:
+                    continue
+                url = entry.get("url") or entry.get("webpage_url")
+                if not url:
+                    continue
+                songs.append(
+                    Song(
+                        title=entry.get("title") or "Unknown",
+                        url=url,
+                        duration=int(entry.get("duration") or 0),
+                        requester=requester,
+                        thumbnail=entry.get("thumbnail") or "",
+                        source="soundcloud",
+                    )
+                )
+            return songs
+
+    try:
+        async with _EXTRACT_SEM:
+            return await asyncio.wait_for(
+                loop.run_in_executor(None, _run), timeout=_YDL_TIMEOUT
+            )
+    except asyncio.TimeoutError:
+        logger.error("search_soundcloud timed out for query: %s", query)
+        return []

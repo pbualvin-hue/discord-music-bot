@@ -54,8 +54,10 @@ from services.bilibili_service import (
 from services.youtube_service import (
     get_playlist_songs,
     is_playlist_url,
+    is_soundcloud_url,
     is_url,
     search_multiple,
+    search_soundcloud,
     search_song,
 )
 from ui.control_panel_view import ControlPanelView
@@ -510,15 +512,32 @@ class MusicCog(commands.Cog, name="Music"):
 
     # ── /play ─────────────────────────────────────────────────────────
 
-    @app_commands.command(name="play", description="播放音樂 — YouTube/Bilibili 連結、Playlist 或搜尋關鍵字")
+    @app_commands.command(name="play", description="播放音樂 — YT/Bilibili/SoundCloud 連結、Playlist 或關鍵字")
     @app_commands.describe(
-        query="YouTube/Bilibili 連結、Playlist，或關鍵字（加 bili 前綴搜 Bilibili，如：bili 五月天）",
+        query="連結（YT/Bilibili/SoundCloud/Playlist）或搜尋關鍵字",
+        source="指定來源；不選＝自動判定",
+        position="插播位置：排到最後（預設）、下一首、立即播放",
         message="附上留言，顯示在 Now Playing 卡片上",
+    )
+    @app_commands.choices(
+        source=[
+            app_commands.Choice(name="自動判定", value="auto"),
+            app_commands.Choice(name="YouTube", value="youtube"),
+            app_commands.Choice(name="Bilibili", value="bilibili"),
+            app_commands.Choice(name="SoundCloud", value="soundcloud"),
+        ],
+        position=[
+            app_commands.Choice(name="排到最後", value="last"),
+            app_commands.Choice(name="下一首", value="next"),
+            app_commands.Choice(name="立即播放", value="now"),
+        ],
     )
     async def play(
         self,
         interaction: discord.Interaction,
         query: str,
+        source: str = "auto",
+        position: str = "last",
         message: Optional[str] = None,
     ) -> None:
         await interaction.response.defer()
@@ -533,7 +552,25 @@ class MusicCog(commands.Cog, name="Music"):
         if message:
             state.play_message = message[:100]
 
-        if is_playlist_url(query):
+        # ── resolve effective source + keyword ──────────────────────────
+        url_mode = is_url(query)
+        eff, kw = source, query
+        if source == "auto":
+            if is_bilibili_url(query):
+                eff = "bilibili"
+            elif is_soundcloud_url(query):
+                eff = "soundcloud"
+            elif url_mode:
+                eff = "youtube"
+            else:
+                bili_kw = strip_bili_prefix(query)
+                if bili_kw is not None:
+                    eff, kw, url_mode = "bilibili", bili_kw, False
+                else:
+                    eff = "youtube"
+
+        # ── Playlist (YouTube only) ─────────────────────────────────────
+        if url_mode and eff == "youtube" and is_playlist_url(query):
             songs = await get_playlist_songs(query, requester)
             if not songs:
                 await interaction.followup.send("❌ 無法解析 Playlist。")
@@ -542,57 +579,60 @@ class MusicCog(commands.Cog, name="Music"):
             suffix = f"（共 {len(songs)} 首，已達上限）" if added < len(songs) else ""
             await interaction.followup.send(f"📋 已將 **{added}** 首加入 Queue{suffix}")
 
-        elif is_bilibili_url(query):
-            song = await resolve_bilibili_song(query, requester)
-            if not song:
-                await interaction.followup.send("❌ 無法解析 Bilibili 連結。")
-                return
-            if not self.player.add_to_queue(guild_id, song):
-                await interaction.followup.send("❌ Queue 已達上限。")
-                return
-            if was_active:
-                await interaction.followup.send(f"✅ 已加入 Queue：**{song.title}** `[{song.duration_str}]`")
-
-        elif is_url(query):
-            song = await search_song(query, requester)
-            if not song:
-                await interaction.followup.send("❌ 無法解析連結。")
-                return
-            if not self.player.add_to_queue(guild_id, song):
-                await interaction.followup.send("❌ Queue 已達上限。")
-                return
-            if was_active:
-                await interaction.followup.send(f"✅ 已加入 Queue：**{song.title}** `[{song.duration_str}]`")
-
         else:
-            bili_kw = strip_bili_prefix(query)
-            if bili_kw is not None:
-                results = await search_bilibili(bili_kw, requester)
-                src_label, src_query = "Bilibili", bili_kw
+            # ── single URL, or keyword → selection menu ─────────────────
+            if url_mode:
+                if eff == "bilibili":
+                    song = await resolve_bilibili_song(query, requester)
+                elif eff == "soundcloud":
+                    song = await search_song(query, requester, source="soundcloud")
+                else:
+                    song = await search_song(query, requester)
+                if not song:
+                    await interaction.followup.send("❌ 無法解析連結。")
+                    return
             else:
-                results = await search_multiple(query, requester)
-                src_label, src_query = "YouTube", query
-            if not results:
-                await interaction.followup.send(f"❌ 在 {src_label} 找不到「{src_query}」。")
-                return
-            embed = discord.Embed(title=f"🔍 {src_label} 搜尋：{src_query}", color=discord.Color.blurple())
-            for i, s in enumerate(results, 1):
-                embed.add_field(name=f"{i}. {s.title}", value=f"⏱ {s.duration_str}", inline=False)
-            if results[0].thumbnail:
-                embed.set_image(url=results[0].thumbnail)
-            embed.set_footer(text="請從下方選單選擇，30 秒後自動取消")
-            view = SearchSelectView(results)
-            msg = await interaction.followup.send(embed=embed, view=view)
-            song = await view.wait_for_selection()
-            if song is None:
-                await msg.edit(content="❌ 選曲逾時，已取消。", embed=None, view=None)
-                return
-            await msg.delete()
-            if not self.player.add_to_queue(guild_id, song):
+                if eff == "bilibili":
+                    results = await search_bilibili(kw, requester)
+                    label = "Bilibili"
+                elif eff == "soundcloud":
+                    results = await search_soundcloud(kw, requester)
+                    label = "SoundCloud"
+                else:
+                    results = await search_multiple(kw, requester)
+                    label = "YouTube"
+                if not results:
+                    await interaction.followup.send(f"❌ 在 {label} 找不到「{kw}」。")
+                    return
+                embed = discord.Embed(title=f"🔍 {label} 搜尋：{kw}", color=discord.Color.blurple())
+                for i, s in enumerate(results, 1):
+                    embed.add_field(name=f"{i}. {s.title}", value=f"⏱ {s.duration_str}", inline=False)
+                if results[0].thumbnail:
+                    embed.set_image(url=results[0].thumbnail)
+                embed.set_footer(text="請從下方選單選擇，30 秒後自動取消")
+                view = SearchSelectView(results)
+                msg = await interaction.followup.send(embed=embed, view=view)
+                song = await view.wait_for_selection()
+                if song is None:
+                    await msg.edit(content="❌ 選曲逾時，已取消。", embed=None, view=None)
+                    return
+                await msg.delete()
+
+            # ── enqueue at the chosen position ──────────────────────────
+            if position in ("next", "now"):
+                ok = self.player.add_to_front(guild_id, song)
+            else:
+                ok = self.player.add_to_queue(guild_id, song)
+            if not ok:
                 await interaction.followup.send("❌ Queue 已達上限。")
                 return
+            if position == "now" and was_active:
+                self.player.skip(guild_id)  # play the inserted song immediately
             if was_active:
-                await interaction.followup.send(f"✅ 已加入 Queue：**{song.title}** `[{song.duration_str}]`")
+                pos_tag = {"next": "（下一首）", "now": "（立即播放）"}.get(position, "")
+                await interaction.followup.send(
+                    f"✅ 已加入 Queue{pos_tag}：**{song.title}** `[{song.duration_str}]`"
+                )
 
         if not was_active:
             await self.player.play_next(guild_id)
@@ -711,6 +751,39 @@ class MusicCog(commands.Cog, name="Music"):
             await interaction.response.send_message(f"🔀 Queue 已隨機排列（{len(state.queue)} 首）")
         else:
             await interaction.response.send_message("❌ Queue 是空的。", ephemeral=True)
+
+    @app_commands.command(name="skipto", description="跳到 Queue 中第 N 首（中間的歌會被略過）")
+    @app_commands.describe(position="Queue 中的位置（1 = 下一首）")
+    async def skipto(self, interaction: discord.Interaction, position: int) -> None:
+        target = self.player.skip_to(interaction.guild_id, position)
+        if target is None:
+            await interaction.response.send_message("❌ 位置超出 Queue 範圍。", ephemeral=True)
+            return
+        await interaction.response.send_message(f"⏭️ 跳到第 **{position}** 首：**{target.title}**")
+
+    @app_commands.command(name="clear", description="清空 Queue（保留目前播放中的歌）")
+    async def clear(self, interaction: discord.Interaction) -> None:
+        n = self.player.clear_queue(interaction.guild_id)
+        if n == 0:
+            await interaction.response.send_message("❌ Queue 已經是空的。", ephemeral=True)
+        else:
+            await interaction.response.send_message(f"🧹 已清空 Queue（移除 **{n}** 首），目前歌曲繼續播放。")
+
+    @app_commands.command(name="dedupe", description="移除 Queue 中重複的歌曲")
+    async def dedupe(self, interaction: discord.Interaction) -> None:
+        removed = self.player.dedupe_queue(interaction.guild_id)
+        if removed == 0:
+            await interaction.response.send_message("✨ Queue 沒有重複歌曲。", ephemeral=True)
+        else:
+            await interaction.response.send_message(f"🧹 已移除 **{removed}** 首重複歌曲。")
+
+    @app_commands.command(name="247", description="開關 24/7 模式（無人時也不自動離開）")
+    async def stay247(self, interaction: discord.Interaction) -> None:
+        on = self.player.set_stay_247(interaction.guild_id)
+        if on:
+            await interaction.response.send_message("🔁 **24/7 模式已開啟** — 即使沒人聆聽也會留在語音頻道。")
+        else:
+            await interaction.response.send_message("⏏️ **24/7 模式已關閉** — 無人聆聽時將自動離開。")
 
     @app_commands.command(name="filter", description="套用音訊濾鏡（立即重播）")
     @app_commands.choices(effect=[
@@ -1228,17 +1301,18 @@ class MusicCog(commands.Cog, name="Music"):
         embed.add_field(
             name="▶️ 播放控制", inline=False,
             value=(
-                "`/play <YouTube/Bilibili 連結 · Playlist · 關鍵字>`\n"
-                "　關鍵字預設搜 YouTube；加 `bili ` 前綴搜 Bilibili（例：`bili 五月天 倔強`）\n"
+                "`/play <連結 · Playlist · 關鍵字>`\n"
+                "　🔹 `來源` 下拉：YouTube／Bilibili／SoundCloud（不選＝自動判定）\n"
+                "　🔹 `插播` 下拉：排到最後／下一首／立即播放\n"
                 "`/pause`  `/resume`  `/skip`（DJ/點歌者）  `/stop`（DJ）"
             ),
         )
         embed.add_field(
             name="📋 Queue 管理", inline=False,
             value=(
-                "`/queue` — 互動式 Queue 面板（分頁 + 清空按鈕）\n"
-                "`/shuffle`  `/remove <編號>`  `/move <從> <到>`  `/replay`\n"
-                "`/voteskip` — 過半數投票跳歌"
+                "`/queue` — 互動式面板　`/shuffle`　`/skipto <編號>`\n"
+                "`/clear`（清空保留當前）　`/dedupe`（去重）\n"
+                "`/remove <編號>`  `/move <從> <到>`  `/replay`  `/voteskip`"
             ),
         )
         embed.add_field(
@@ -1255,7 +1329,7 @@ class MusicCog(commands.Cog, name="Music"):
         )
         embed.add_field(
             name="⚙️ 設定", inline=False,
-            value="`/volume <1-200>`  `/loop`  `/filter`  `/autoradio`  `/sfx`",
+            value="`/volume <1-200>`  `/loop`  `/filter`  `/autoradio`  `/sfx`  `/247`（24/7 常駐）",
         )
         embed.add_field(
             name="✨ 特殊功能", inline=False,

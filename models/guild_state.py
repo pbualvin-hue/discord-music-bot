@@ -32,6 +32,7 @@ class GuildState:
     # Feature toggles
     auto_radio_enabled: bool = False
     sfx_enabled: bool = False
+    stay_247: bool = False        # 24/7: never auto-disconnect when alone
 
     # B2: point-of-play message tag
     play_message: str = ""

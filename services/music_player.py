@@ -76,6 +76,64 @@ class MusicPlayer:
         logger.info("[Guild %s] Queue shuffled.", guild_id)
         return True
 
+    def add_to_front(self, guild_id: int, song: Song) -> bool:
+        """Insert a song at the top of the queue (Play Next)."""
+        state = self.get_state(guild_id)
+        if len(state.queue) >= MAX_QUEUE_SIZE:
+            return False
+        state.queue.insert(0, song)
+        state.prefetch_url = None  # front of queue changed
+        state.prefetch_song = None
+        return True
+
+    def clear_queue(self, guild_id: int) -> int:
+        """Empty the pending queue but keep the current song playing."""
+        state = self.get_state(guild_id)
+        n = len(state.queue)
+        state.queue.clear()
+        state.prefetch_url = None
+        state.prefetch_song = None
+        logger.info("[Guild %s] Queue cleared (%d removed).", guild_id, n)
+        return n
+
+    def dedupe_queue(self, guild_id: int) -> int:
+        """Drop later duplicates (same URL) from the queue. Returns count removed."""
+        state = self.get_state(guild_id)
+        seen: set[str] = set()
+        kept: list[Song] = []
+        for song in state.queue:
+            if song.url in seen:
+                continue
+            seen.add(song.url)
+            kept.append(song)
+        removed = len(state.queue) - len(kept)
+        if removed:
+            state.queue = kept
+            state.prefetch_url = None
+            state.prefetch_song = None
+        return removed
+
+    def skip_to(self, guild_id: int, position: int) -> Optional[Song]:
+        """Drop everything before queue position *position* (1-based) and skip,
+        so that song plays next. Returns the target song, or None if invalid."""
+        state = self.get_state(guild_id)
+        if position < 1 or position > len(state.queue):
+            return None
+        target = state.queue[position - 1]
+        del state.queue[: position - 1]
+        state.prefetch_url = None
+        state.prefetch_song = None
+        self.skip(guild_id)
+        return target
+
+    def set_stay_247(self, guild_id: int) -> bool:
+        """Toggle 24/7 mode. Returns the new state."""
+        state = self.get_state(guild_id)
+        state.stay_247 = not state.stay_247
+        if state.stay_247:
+            self._cancel_idle_timer(guild_id)
+        return state.stay_247
+
     # ── Status ─────────────────────────────────────────────────────────
 
     def is_playing(self, guild_id: int) -> bool:
@@ -350,6 +408,9 @@ class MusicPlayer:
     def check_alone_in_channel(self, guild_id: int) -> None:
         state = self.get_state(guild_id)
         if not state.voice_client or not state.voice_client.is_connected():
+            return
+        if state.stay_247:               # 24/7 mode: never leave on its own
+            self._cancel_idle_timer(guild_id)
             return
         humans = [m for m in state.voice_client.channel.members if not m.bot]
         if humans:

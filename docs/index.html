@@ -295,7 +295,7 @@
   <div class="eq"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <p class="sub">🦎 Discord Music Bot · 互動式使用手冊　🎵 點指令即可複製</p>
   <div class="badges">
-    <span class="pill"><b>31</b> 個指令</span>
+    <span class="pill"><b>35</b> 個指令</span>
     <span class="pill hot">🆕 支援 <b>Bilibili</b>（連結＋關鍵字）</span>
     <span class="pill">預設音量 <b>20%</b></span>
   </div>
@@ -378,10 +378,10 @@
 /* ---------- command catalogue ---------- */
 const COMMANDS=[
   {cat:"語音",em:"🔊",title:"語音頻道",items:[{cmd:"/join",desc:"讓 Bot 加入你目前所在的語音頻道",perm:"all"},{cmd:"/leave",desc:"讓 Bot 離開語音頻道",perm:"all"}]},
-  {cat:"播放",em:"▶️",title:"播放控制",items:[{cmd:"/play",args:"<連結 / 關鍵字>",desc:"播放歌曲（用法見上方「怎麼點歌」三種方式）。可加 message 顯示在卡片上。",perm:"all",tags:"bilibili b站 youtube 播放 點歌 search b23 連結"},{cmd:"/pause",desc:"暫停目前播放",perm:"all"},{cmd:"/resume",desc:"繼續播放",perm:"all"},{cmd:"/skip",desc:"跳過目前歌曲（DJ 或該歌點歌者）",perm:"self",tags:"跳歌"},{cmd:"/stop",desc:"停止並清空整個 Queue（佇列有歌時會先確認）",perm:"dj"}]},
-  {cat:"佇列",em:"📋",title:"Queue 管理",items:[{cmd:"/queue",desc:"互動式 Queue 面板（分頁瀏覽＋清空按鈕）",perm:"all"},{cmd:"/shuffle",desc:"隨機打亂 Queue 順序",perm:"all"},{cmd:"/remove",args:"<編號>",desc:"從 Queue 移除指定位置的歌曲",perm:"all"},{cmd:"/move",args:"<從> <到>",desc:"調整 Queue 中歌曲的順序",perm:"all"},{cmd:"/replay",desc:"把上一首歌重新加回 Queue 頂端",perm:"all",tags:"重播"},{cmd:"/voteskip",desc:"發起投票跳歌，過半數同意即跳過",perm:"all",tags:"投票"}]},
+  {cat:"播放",em:"▶️",title:"播放控制",items:[{cmd:"/play",args:"<連結 / 關鍵字>　[來源]　[插播]",desc:"播放歌曲。來源下拉：YouTube／Bilibili／SoundCloud（不選＝自動判定）；插播下拉：排到最後／下一首／立即播放。每個來源都支援關鍵字與 URL。",perm:"all",tags:"bilibili b站 youtube soundcloud sc 播放 點歌 search b23 連結 來源 插播 next now"},{cmd:"/pause",desc:"暫停目前播放",perm:"all"},{cmd:"/resume",desc:"繼續播放",perm:"all"},{cmd:"/skip",desc:"跳過目前歌曲（DJ 或該歌點歌者）",perm:"self",tags:"跳歌"},{cmd:"/stop",desc:"停止並清空整個 Queue（佇列有歌時會先確認）",perm:"dj"}]},
+  {cat:"佇列",em:"📋",title:"Queue 管理",items:[{cmd:"/queue",desc:"互動式 Queue 面板（分頁瀏覽＋清空按鈕）",perm:"all"},{cmd:"/shuffle",desc:"隨機打亂 Queue 順序",perm:"all"},{cmd:"/skipto",args:"<編號>",desc:"跳到 Queue 第 N 首，中間的歌會被略過",perm:"all",tags:"跳到 jump"},{cmd:"/clear",desc:"清空 Queue 但保留目前播放中的歌",perm:"all",tags:"清空"},{cmd:"/dedupe",desc:"移除 Queue 中重複的歌曲",perm:"all",tags:"去重 重複"},{cmd:"/remove",args:"<編號>",desc:"從 Queue 移除指定位置的歌曲",perm:"all"},{cmd:"/move",args:"<從> <到>",desc:"調整 Queue 中歌曲的順序",perm:"all"},{cmd:"/replay",desc:"把上一首歌重新加回 Queue 頂端",perm:"all",tags:"重播"},{cmd:"/voteskip",desc:"發起投票跳歌，過半數同意即跳過",perm:"all",tags:"投票"}]},
   {cat:"控制台",em:"🎛️",title:"控制台",items:[{cmd:"/nowplaying",desc:"顯示 Now Playing 控制台（每 15 秒更新）",perm:"all"},{cmd:"/setchannel",desc:"把目前頻道設為專屬音樂控制台",perm:"dj"},{cmd:"/clearchannel",desc:"取消專屬音樂控制台設定",perm:"dj"}]},
-  {cat:"設定",em:"⚙️",title:"播放設定",items:[{cmd:"/volume",args:"<1–200>",desc:"調整音量，100＝原始（預設啟動 20%）",perm:"all",tags:"音量"},{cmd:"/loop",desc:"切換迴圈：關閉 → 單曲 → 整列循環",perm:"all",tags:"循環"},{cmd:"/filter",desc:"音訊濾鏡（bass／nightcore／slow／8d）",perm:"all",tags:"濾鏡 音效"},{cmd:"/autoradio",desc:"自動推薦：Queue 播完接續相關歌曲",perm:"all",tags:"電台 推薦"},{cmd:"/sfx",desc:"開關成員進出語音的入場/離場音效",perm:"all",tags:"音效"}]},
+  {cat:"設定",em:"⚙️",title:"播放設定",items:[{cmd:"/volume",args:"<1–200>",desc:"調整音量，100＝原始（預設啟動 20%）",perm:"all",tags:"音量"},{cmd:"/loop",desc:"切換迴圈：關閉 → 單曲 → 整列循環",perm:"all",tags:"循環"},{cmd:"/filter",desc:"音訊濾鏡（bass／nightcore／slow／8d）",perm:"all",tags:"濾鏡 音效"},{cmd:"/autoradio",desc:"自動推薦：Queue 播完接續相關歌曲",perm:"all",tags:"電台 推薦"},{cmd:"/247",desc:"24/7 常駐模式：即使沒人聆聽也不自動離開",perm:"all",tags:"247 24/7 常駐 keep"},{cmd:"/sfx",desc:"開關成員進出語音的入場/離場音效",perm:"all",tags:"音效"}]},
   {cat:"特殊",em:"✨",title:"特殊功能",items:[{cmd:"/karaoke",desc:"KTV 歌詞滾動，每 5 秒同步逐行歌詞",perm:"all",tags:"ktv 歌詞 卡拉ok"},{cmd:"/lyrics",desc:"翻頁式歌詞閱讀器（Genius）",perm:"all",tags:"歌詞"},{cmd:"/songinfo",desc:"顯示目前歌曲的詳細資訊",perm:"all"}]},
   {cat:"統計",em:"📊",title:"統計與回顧",items:[{cmd:"/stats",desc:"伺服器播放排行（熱門歌曲、點歌王、評分）",perm:"all",tags:"排行"},{cmd:"/mystats",desc:"查看自己的個人播放統計",perm:"all"},{cmd:"/history",desc:"查看最近 10 首播放記錄",perm:"all"},{cmd:"/yearwrap",args:"[年份]",desc:"伺服器年度音樂回顧",perm:"all",tags:"年度回顧"}]},
   {cat:"收藏",em:"📚",title:"收藏清單",items:[{cmd:"/playlist",args:"save|load|list|delete <名稱>",desc:"管理收藏清單：儲存目前 Queue、載入、列出、刪除",perm:"all",tags:"歌單"}]},
