@@ -8,7 +8,8 @@ class Song:
     duration: int       # seconds; 0 if unknown
     requester: str
     thumbnail: str = field(default="")   # thumbnail URL for embeds
-    source: str = field(default="youtube")   # "youtube" | "bilibili" — picks the resolver
+    source: str = field(default="youtube")   # youtube | bilibili | soundcloud | spotify | twitch | radio
+    is_live: bool = field(default=False)     # live stream / radio — infinite, no progress/rating
 
     @property
     def duration_str(self) -> str:

@@ -91,6 +91,45 @@ def _build_opts(base: dict) -> dict:
     return opts
 
 
+def _live_opts(base: dict) -> dict:
+    """Override the player_client to 'web' — YouTube live streams have no formats
+    under the 'tv' client we use for normal videos."""
+    opts = _build_opts(base)
+    opts["extractor_args"] = {"youtube": {"player_client": ["web"]}}
+    return opts
+
+
+_RADIO_EXTS = (".mp3", ".aac", ".ogg", ".opus", ".m3u8", ".m3u", ".pls", ".flac")
+
+
+def is_twitch_url(text: str) -> bool:
+    return "twitch.tv/" in text
+
+
+def is_radio_url(text: str) -> bool:
+    """A direct audio/stream URL (internet radio) rather than a known platform."""
+    low = text.split("?")[0].lower()
+    return text.startswith(("http://", "https://")) and low.endswith(_RADIO_EXTS)
+
+
+def _is_youtube(url: str) -> bool:
+    return "youtube.com" in url or "youtu.be" in url
+
+
+def make_radio_song(url: str, requester: str) -> Song:
+    """Wrap a direct internet-radio stream URL as a live Song."""
+    from urllib.parse import urlparse
+    host = urlparse(url).netloc or "網路電台"
+    return Song(
+        title=f"📻 {host}",
+        url=url,
+        duration=0,
+        requester=requester,
+        source="radio",
+        is_live=True,
+    )
+
+
 def _thumbnail_from_id(video_id: str) -> str:
     return f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg" if video_id else ""
 
@@ -107,6 +146,7 @@ def _make_song(info: dict, requester: str, source: str = "youtube") -> Song:
         requester=requester,
         thumbnail=thumbnail,
         source=source,
+        is_live=bool(info.get("is_live")),
     )
 
 
@@ -114,29 +154,42 @@ async def search_song(query: str, requester: str, source: str = "youtube") -> Op
     """Resolve a YouTube/SoundCloud URL or search keyword to a single Song."""
     loop = asyncio.get_running_loop()
 
+    def _extract(opts: dict) -> Optional[dict]:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(query, download=False)
+        if info is None:
+            return None
+        if "entries" in info:
+            entries = [e for e in info["entries"] if e]
+            if not entries:
+                return None
+            info = entries[0]
+        return info
+
     def _run() -> Optional[Song]:
-        with yt_dlp.YoutubeDL(_build_opts(_YDL_SINGLE)) as ydl:
-            try:
-                info = ydl.extract_info(query, download=False)
-            except yt_dlp.utils.DownloadError as exc:
-                err = str(exc)
-                if "429" in err or "Too Many Requests" in err:
-                    logger.error("YouTube 限流 (429)：請設定 COOKIES_FILE。%s", exc)
-                elif "Sign in" in err or "age" in err.lower():
-                    logger.error("影片需要登入/年齡驗證：請設定 COOKIES_FILE。%s", exc)
-                elif "unavailable" in err.lower() or "not available" in err.lower():
-                    logger.error("影片無法在此區域播放：%s", exc)
-                else:
-                    logger.error("yt-dlp 搜尋失敗：%s", exc)
-                return None
-            if info is None:
-                return None
-            if "entries" in info:
-                entries = [e for e in info["entries"] if e]
-                if not entries:
+        try:
+            info = _extract(_build_opts(_YDL_SINGLE))
+        except yt_dlp.utils.DownloadError as exc:
+            err = str(exc)
+            # YouTube live: the 'tv' client reports no formats — retry with 'web'.
+            if _is_youtube(query) and ("No video formats" in err or "not available" in err.lower()):
+                try:
+                    info = _extract(_live_opts(_YDL_SINGLE))
+                except Exception as exc2:
+                    logger.error("YouTube live 解析失敗：%s", exc2)
                     return None
-                info = entries[0]
-            return _make_song(info, requester, source)
+            elif "429" in err or "Too Many Requests" in err:
+                logger.error("YouTube 限流 (429)：請設定 COOKIES_FILE。%s", exc)
+                return None
+            elif "Sign in" in err or "age" in err.lower():
+                logger.error("影片需要登入/年齡驗證：請設定 COOKIES_FILE。%s", exc)
+                return None
+            else:
+                logger.error("yt-dlp 搜尋失敗：%s", exc)
+                return None
+        if info is None:
+            return None
+        return _make_song(info, requester, source)
 
     try:
         async with _EXTRACT_SEM:
@@ -278,11 +331,20 @@ async def get_stream_url(song: Song) -> Optional[str]:
     if song.source == "spotify":
         # DRM — resolve to a YouTube match (title is "artist - track")
         return await youtube_stream_from_query(song.title)
+    if song.source == "radio":
+        # direct internet-radio stream — FFmpeg reads the URL as-is
+        return song.url
 
     loop = asyncio.get_running_loop()
+    # YouTube live needs the 'web' client; everything else uses the default opts.
+    stream_opts = (
+        _live_opts(_YDL_STREAM)
+        if song.is_live and _is_youtube(song.url)
+        else _build_opts(_YDL_STREAM)
+    )
 
     def _run() -> Optional[str]:
-        with yt_dlp.YoutubeDL(_build_opts(_YDL_STREAM)) as ydl:
+        with yt_dlp.YoutubeDL(stream_opts) as ydl:
             try:
                 info = ydl.extract_info(song.url, download=False)
             except yt_dlp.utils.DownloadError as exc:

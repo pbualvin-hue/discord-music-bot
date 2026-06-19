@@ -55,8 +55,11 @@ from services.spotify_service import is_spotify_url, resolve_spotify
 from services.youtube_service import (
     get_playlist_songs,
     is_playlist_url,
+    is_radio_url,
     is_soundcloud_url,
+    is_twitch_url,
     is_url,
+    make_radio_song,
     search_multiple,
     search_soundcloud,
     search_song,
@@ -132,12 +135,15 @@ def _build_nowplaying_embed(
 
     embed = discord.Embed(title=title, description=f"**{song.title}**", color=color)
 
-    # J4: pointer progress bar
-    embed.add_field(
-        name="進度",
-        value=f"`{_bar(elapsed, float(song.duration))}`\n`{_fmt(elapsed)}` / `{song.duration_str}`",
-        inline=False,
-    )
+    # J4: progress bar — live streams have no length, show a LIVE indicator
+    if song.is_live:
+        embed.add_field(name="狀態", value="🔴 **直播中 LIVE** · 即時串流", inline=False)
+    else:
+        embed.add_field(
+            name="進度",
+            value=f"`{_bar(elapsed, float(song.duration))}`\n`{_fmt(elapsed)}` / `{song.duration_str}`",
+            inline=False,
+        )
 
     # B2: play message tag
     if state.play_message:
@@ -223,7 +229,13 @@ class MusicCog(commands.Cog, name="Music"):
         # played (e.g. CDN 403). Treat as a stream failure — warn instead of asking
         # for a rating, so a broken link can never trigger the rating prompt.
         played = self.player.get_progress(guild_id)
-        stream_failed = played < 5.0 and (song.duration == 0 or song.duration > 10)
+        # Live streams never "end" normally and have no duration — exclude them
+        # from the failure heuristic so stopping a radio stream isn't flagged.
+        stream_failed = (
+            not song.is_live
+            and played < 5.0
+            and (song.duration == 0 or song.duration > 10)
+        )
 
         # D1 + D3: stop updater, grey out embed
         self._cancel_live_embed(guild_id)
@@ -241,8 +253,8 @@ class MusicCog(commands.Cog, name="Music"):
         # Clear play_message so next song starts fresh
         state.play_message = ""
 
-        # B1: rating prompt — skipped when the song never actually played
-        if state.last_text_channel and song.requester != "Auto-Radio":
+        # B1: rating prompt — skipped for live streams and never-played songs
+        if state.last_text_channel and song.requester != "Auto-Radio" and not song.is_live:
             try:
                 if stream_failed:
                     logger.warning(
@@ -526,6 +538,7 @@ class MusicCog(commands.Cog, name="Music"):
             app_commands.Choice(name="YouTube", value="youtube"),
             app_commands.Choice(name="Bilibili", value="bilibili"),
             app_commands.Choice(name="SoundCloud", value="soundcloud"),
+            app_commands.Choice(name="網路電台/直連串流", value="radio"),
         ],
         position=[
             app_commands.Choice(name="排到最後", value="last"),
@@ -561,6 +574,10 @@ class MusicCog(commands.Cog, name="Music"):
                 eff = "spotify"
             elif is_bilibili_url(query):
                 eff = "bilibili"
+            elif is_radio_url(query):
+                eff = "radio"
+            elif is_twitch_url(query):
+                eff = "twitch"
             elif is_soundcloud_url(query):
                 eff = "soundcloud"
             elif url_mode:
@@ -571,6 +588,11 @@ class MusicCog(commands.Cog, name="Music"):
                     eff, kw, url_mode = "bilibili", bili_kw, False
                 else:
                     eff = "youtube"
+
+        # 網路電台/直連串流需要實際的串流網址
+        if eff == "radio" and not url_mode:
+            await interaction.followup.send("❌ 網路電台需要直接的串流網址（http(s) 開頭）。")
+            return
 
         # ── Spotify (track → 1 song, album/playlist → many) ─────────────
         if eff == "spotify":
@@ -617,6 +639,10 @@ class MusicCog(commands.Cog, name="Music"):
                     song = await resolve_bilibili_song(query, requester)
                 elif eff == "soundcloud":
                     song = await search_song(query, requester, source="soundcloud")
+                elif eff == "radio":
+                    song = make_radio_song(query, requester)
+                elif eff == "twitch":
+                    song = await search_song(query, requester, source="twitch")
                 else:
                     song = await search_song(query, requester)
                 if not song:
@@ -1333,8 +1359,8 @@ class MusicCog(commands.Cog, name="Music"):
             name="▶️ 播放控制", inline=False,
             value=(
                 "`/play <連結 · Playlist · 關鍵字>`\n"
-                "　🔹 連結支援 YouTube／Bilibili／SoundCloud／**Spotify**（轉 YT 播放）\n"
-                "　🔹 `來源` 下拉：YouTube／Bilibili／SoundCloud（不選＝自動判定）\n"
+                "　🔹 連結：YouTube／Bilibili／SoundCloud／**Spotify**／**Twitch**／**YT 直播**\n"
+                "　🔹 `來源` 下拉：YouTube／Bilibili／SoundCloud／**網路電台**（不選＝自動）\n"
                 "　🔹 `插播` 下拉：排到最後／下一首／立即播放\n"
                 "`/pause`  `/resume`  `/skip`（DJ/點歌者）  `/stop`（DJ）"
             ),

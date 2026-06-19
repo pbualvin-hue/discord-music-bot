@@ -296,7 +296,7 @@
   <p class="sub">🦎 Discord Music Bot · 互動式使用手冊　🎵 點指令即可複製</p>
   <div class="badges">
     <span class="pill"><b>35</b> 個指令</span>
-    <span class="pill hot">🆕 <b>YouTube · Bilibili · SoundCloud · Spotify</b></span>
+    <span class="pill hot">🆕 <b>YT · Bilibili · SoundCloud · Spotify · Twitch · 直播/電台</b></span>
     <span class="pill">預設音量 <b>20%</b></span>
   </div>
 </header>
@@ -306,7 +306,7 @@
   <h2>▶️ 怎麼點歌？　<code>/play</code></h2>
   <p class="lead">一個指令，三種方式 —— 不用記，照著範例貼就好。點下方範例可直接複製。</p>
   <div class="modes">
-    <div class="mode"><div class="ic">🔗</div><h3>貼連結</h3><p>YouTube／Bilibili／SoundCloud／Spotify 連結、Playlist、b23.tv 短連結都可以（Spotify 自動轉 YouTube 播放）。</p><code class="ex" data-cmd="/play https://open.spotify.com/track/...">/play <span class="tag">&lt;貼上連結&gt;</span></code></div>
+    <div class="mode"><div class="ic">🔗</div><h3>貼連結</h3><p>YouTube／Bilibili／SoundCloud／Spotify／Twitch、Playlist、b23 短連結、YT 直播、網路電台都行（Spotify 自動轉 YouTube）。</p><code class="ex" data-cmd="/play https://open.spotify.com/track/...">/play <span class="tag">&lt;貼上連結&gt;</span></code></div>
     <div class="mode"><div class="ic">🔍</div><h3>關鍵字（YouTube）</h3><p>直接打歌名，搜 YouTube，跳出選單讓你挑想要的那首。</p><code class="ex" data-cmd="/play 五月天 倔強">/play <span class="tag">五月天 倔強</span></code></div>
     <div class="mode"><div class="ic">🦎</div><h3>關鍵字（Bilibili）</h3><p>想搜 Bilibili？關鍵字前面加 <b style="color:var(--lime)">bili</b>（或 b站）即可。</p><code class="ex" data-cmd="/play bili 五月天 倔強">/play <span class="tag">bili</span> 五月天 倔強</code></div>
   </div>
@@ -378,7 +378,7 @@
 /* ---------- command catalogue ---------- */
 const COMMANDS=[
   {cat:"語音",em:"🔊",title:"語音頻道",items:[{cmd:"/join",desc:"讓 Bot 加入你目前所在的語音頻道",perm:"all"},{cmd:"/leave",desc:"讓 Bot 離開語音頻道",perm:"all"}]},
-  {cat:"播放",em:"▶️",title:"播放控制",items:[{cmd:"/play",args:"<連結 / 關鍵字>　[來源]　[插播]",desc:"播放歌曲。連結支援 YouTube／Bilibili／SoundCloud／Spotify（Spotify 自動轉 YouTube 播放）。來源下拉：YouTube／Bilibili／SoundCloud（不選＝自動判定）；插播下拉：排到最後／下一首／立即播放。",perm:"all",tags:"bilibili b站 youtube soundcloud sc spotify 播放 點歌 search b23 連結 來源 插播 next now"},{cmd:"/pause",desc:"暫停目前播放",perm:"all"},{cmd:"/resume",desc:"繼續播放",perm:"all"},{cmd:"/skip",desc:"跳過目前歌曲（DJ 或該歌點歌者）",perm:"self",tags:"跳歌"},{cmd:"/stop",desc:"停止並清空整個 Queue（佇列有歌時會先確認）",perm:"dj"}]},
+  {cat:"播放",em:"▶️",title:"播放控制",items:[{cmd:"/play",args:"<連結 / 關鍵字>　[來源]　[插播]",desc:"播放歌曲。連結支援 YouTube／Bilibili／SoundCloud／Spotify／Twitch／YT 直播／網路電台（Spotify 自動轉 YouTube）。來源下拉含「網路電台/直連串流」；插播下拉：排到最後／下一首／立即播放。",perm:"all",tags:"bilibili b站 youtube soundcloud sc spotify twitch 直播 live 電台 radio 播放 點歌 search b23 連結 來源 插播 next now"},{cmd:"/pause",desc:"暫停目前播放",perm:"all"},{cmd:"/resume",desc:"繼續播放",perm:"all"},{cmd:"/skip",desc:"跳過目前歌曲（DJ 或該歌點歌者）",perm:"self",tags:"跳歌"},{cmd:"/stop",desc:"停止並清空整個 Queue（佇列有歌時會先確認）",perm:"dj"}]},
   {cat:"佇列",em:"📋",title:"Queue 管理",items:[{cmd:"/queue",desc:"互動式 Queue 面板（分頁瀏覽＋清空按鈕）",perm:"all"},{cmd:"/shuffle",desc:"隨機打亂 Queue 順序",perm:"all"},{cmd:"/skipto",args:"<編號>",desc:"跳到 Queue 第 N 首，中間的歌會被略過",perm:"all",tags:"跳到 jump"},{cmd:"/clear",desc:"清空 Queue 但保留目前播放中的歌",perm:"all",tags:"清空"},{cmd:"/dedupe",desc:"移除 Queue 中重複的歌曲",perm:"all",tags:"去重 重複"},{cmd:"/remove",args:"<編號>",desc:"從 Queue 移除指定位置的歌曲",perm:"all"},{cmd:"/move",args:"<從> <到>",desc:"調整 Queue 中歌曲的順序",perm:"all"},{cmd:"/replay",desc:"把上一首歌重新加回 Queue 頂端",perm:"all",tags:"重播"},{cmd:"/voteskip",desc:"發起投票跳歌，過半數同意即跳過",perm:"all",tags:"投票"}]},
   {cat:"控制台",em:"🎛️",title:"控制台",items:[{cmd:"/nowplaying",desc:"顯示 Now Playing 控制台（每 15 秒更新）",perm:"all"},{cmd:"/setchannel",desc:"把目前頻道設為專屬音樂控制台",perm:"dj"},{cmd:"/clearchannel",desc:"取消專屬音樂控制台設定",perm:"dj"}]},
   {cat:"設定",em:"⚙️",title:"播放設定",items:[{cmd:"/volume",args:"<1–200>",desc:"調整音量，100＝原始（預設啟動 20%）",perm:"all",tags:"音量"},{cmd:"/loop",desc:"切換迴圈：關閉 → 單曲 → 整列循環",perm:"all",tags:"循環"},{cmd:"/filter",desc:"音訊濾鏡（bass／nightcore／slow／8d）",perm:"all",tags:"濾鏡 音效"},{cmd:"/autoradio",desc:"自動推薦：Queue 播完接續相關歌曲",perm:"all",tags:"電台 推薦"},{cmd:"/247",desc:"24/7 常駐模式：即使沒人聆聽也不自動離開",perm:"all",tags:"247 24/7 常駐 keep"},{cmd:"/sfx",desc:"開關成員進出語音的入場/離場音效",perm:"all",tags:"音效"}]},

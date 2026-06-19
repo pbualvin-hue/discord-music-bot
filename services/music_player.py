@@ -253,8 +253,13 @@ class MusicPlayer:
             elif state.loop_mode == LoopMode.QUEUE:
                 state.queue.append(state.current_song)
 
-        # Auto-radio: fill queue when empty
-        if not state.queue and state.auto_radio_enabled and state.current_song:
+        # Auto-radio: fill queue when empty (never seed from a live stream)
+        if (
+            not state.queue
+            and state.auto_radio_enabled
+            and state.current_song
+            and not state.current_song.is_live
+        ):
             last_title = state.current_song.title
             logger.info("[Guild %s] Auto-radio searching for: %s", guild_id, last_title)
             related = await search_song(last_title, "Auto-Radio")
