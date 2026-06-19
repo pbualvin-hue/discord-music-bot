@@ -62,5 +62,15 @@ class GuildState:
     prefetch_url: Optional[str] = None
     prefetch_song: Optional[Song] = None
 
+    # Seek: reuse the current stream URL and replay from an offset
+    current_stream_url: Optional[str] = None
+    seeking: bool = False
+    seek_target: float = 0.0
+
+    # SponsorBlock: skip non-music / sponsor segments of the current song
+    sponsorblock_enabled: bool = False
+    sponsor_segments: list = field(default_factory=list)   # [(start, end)] seconds
+    sponsor_watch_task: Optional[asyncio.Task] = None
+
     # Context: last text channel that issued a command (for announcements)
     last_text_channel: Optional[discord.TextChannel] = None

@@ -90,6 +90,26 @@ def _fmt(s: float) -> str:
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
 
 
+def _parse_time(text: str) -> tuple[bool, float] | None:
+    """Parse '1:30', '90', '+15' or '-15' → (is_relative, signed_seconds)."""
+    text = text.strip()
+    relative = False
+    sign = 1
+    if text[:1] in "+-":
+        relative = True
+        sign = -1 if text[0] == "-" else 1
+        text = text[1:].strip()
+    try:
+        if ":" in text:
+            parts = text.split(":")
+            secs = int(parts[0]) * 60 + float(parts[1])
+        else:
+            secs = float(text)
+    except (ValueError, IndexError):
+        return None
+    return relative, sign * secs
+
+
 def _bar(elapsed: float, total: float) -> str:
     """J4: Progress bar with 🔘 pointer."""
     if total <= 0:
@@ -186,6 +206,10 @@ class MusicCog(commands.Cog, name="Music"):
         state = self.player.get_state(guild_id)
         state.play_message = state.play_message  # keep until manually cleared
 
+        # Auto-pop a fresh Now Playing panel on every song change, then start the
+        # live updater. (Skipped when a dedicated music channel owns the panel.)
+        await self._announce_nowplaying(guild_id, song)
+
         # D1: start live embed updater
         self._cancel_live_embed(guild_id)
         state.live_embed_task = asyncio.create_task(self._live_embed_loop(guild_id))
@@ -221,6 +245,31 @@ class MusicCog(commands.Cog, name="Music"):
                         await state.last_text_channel.send(embed=embed)
             except Exception as exc:
                 logger.error("[Guild %s] Achievement error: %s", guild_id, exc)
+
+    async def _announce_nowplaying(self, guild_id: int, song: Song) -> None:
+        """Post a fresh Now Playing control panel on song change (auto-popup).
+        Skipped when a dedicated music channel already owns a persistent panel."""
+        state = self.player.get_state(guild_id)
+        if await get_music_channel(guild_id):
+            return
+        channel = state.last_text_channel
+        if channel is None:
+            return
+        # remove the previous auto-popup panel so only the latest one remains
+        self._cancel_live_embed(guild_id)
+        if state.live_embed_message:
+            try:
+                await state.live_embed_message.delete()
+            except Exception:
+                pass
+            state.live_embed_message = None
+        try:
+            rating = await get_song_rating(guild_id, song.url)
+            embed = _build_nowplaying_embed(song, state, 0.0, False, rating=rating)
+            view = ControlPanelView(self.player, guild_id, timeout=None, cog=self)
+            state.live_embed_message = await channel.send(embed=embed, view=view)
+        except Exception as exc:
+            logger.error("[Guild %s] nowplaying auto-popup failed: %s", guild_id, exc)
 
     async def _on_song_end(self, guild_id: int, song: Song) -> None:
         state = self.player.get_state(guild_id)
@@ -693,13 +742,11 @@ class MusicCog(commands.Cog, name="Music"):
 
         if not was_active:
             await self.player.play_next(guild_id)
+            # _on_song_start auto-pops the Now Playing panel; just ack the command.
             if state.current_song:
-                s = state.current_song
-                rating = await get_song_rating(guild_id, s.url)
-                embed = _build_nowplaying_embed(s, state, self.player.get_progress(guild_id), False, rating=rating)
-                view = ControlPanelView(self.player, guild_id, timeout=180, cog=self)
-                np_msg = await interaction.followup.send(embed=embed, view=view)
-                state.live_embed_message = np_msg
+                await interaction.followup.send(
+                    f"▶️ 開始播放：**{state.current_song.title}**", ephemeral=True
+                )
             else:
                 await interaction.followup.send("❌ 播放失敗，無法取得串流。")
 
@@ -841,6 +888,43 @@ class MusicCog(commands.Cog, name="Music"):
             await interaction.response.send_message("🔁 **24/7 模式已開啟** — 即使沒人聆聽也會留在語音頻道。")
         else:
             await interaction.response.send_message("⏏️ **24/7 模式已關閉** — 無人聆聽時將自動離開。")
+
+    @app_commands.command(name="seek", description="跳轉到指定時間（1:30、90 秒，或 +15／-15 相對）")
+    @app_commands.describe(position="時間：mm:ss 或秒數；可加 + / - 做相對跳轉（如 +15）")
+    async def seek(self, interaction: discord.Interaction, position: str) -> None:
+        guild_id = interaction.guild_id
+        state = self.player.get_state(guild_id)
+        song = state.current_song
+        if not song:
+            await interaction.response.send_message("❌ 目前沒有播放中的歌曲。", ephemeral=True)
+            return
+        if song.is_live or not song.duration:
+            await interaction.response.send_message("❌ 直播/電台無法跳轉。", ephemeral=True)
+            return
+        parsed = _parse_time(position)
+        if parsed is None:
+            await interaction.response.send_message(
+                "❌ 時間格式錯誤，請用 `1:30`、`90` 或 `+15`／`-15`。", ephemeral=True
+            )
+            return
+        relative, val = parsed
+        target = self.player.get_progress(guild_id) + val if relative else val
+        await interaction.response.defer()
+        result = await self.player.seek(guild_id, target)
+        if result is None:
+            await interaction.followup.send("❌ 無法跳轉。", ephemeral=True)
+        else:
+            await interaction.followup.send(f"⏩ 已跳轉到 **{_fmt(result)} / {song.duration_str}**")
+
+    @app_commands.command(name="sponsorblock", description="開關 SponsorBlock（自動跳過非音樂/業配段）")
+    async def sponsorblock(self, interaction: discord.Interaction) -> None:
+        on = self.player.set_sponsorblock(interaction.guild_id)
+        if on:
+            await interaction.response.send_message(
+                "⏭️ **SponsorBlock 已開啟** — 會自動跳過音樂影片的前奏閒聊、業配等非音樂段落（下一首生效）。"
+            )
+        else:
+            await interaction.response.send_message("**SponsorBlock 已關閉**。")
 
     @app_commands.command(name="filter", description="套用音訊濾鏡（立即重播）")
     @app_commands.choices(effect=[
@@ -1362,7 +1446,7 @@ class MusicCog(commands.Cog, name="Music"):
                 "　🔹 連結：YouTube／Bilibili／SoundCloud／**Spotify**／**Twitch**／**YT 直播**\n"
                 "　🔹 `來源` 下拉：YouTube／Bilibili／SoundCloud／**網路電台**（不選＝自動）\n"
                 "　🔹 `插播` 下拉：排到最後／下一首／立即播放\n"
-                "`/pause`  `/resume`  `/skip`（DJ/點歌者）  `/stop`（DJ）"
+                "`/pause`  `/resume`  `/seek <1:30/+15>`  `/skip`（DJ/點歌者）  `/stop`（DJ）"
             ),
         )
         embed.add_field(
@@ -1387,7 +1471,10 @@ class MusicCog(commands.Cog, name="Music"):
         )
         embed.add_field(
             name="⚙️ 設定", inline=False,
-            value="`/volume <1-200>`  `/loop`  `/filter`  `/autoradio`  `/sfx`  `/247`（24/7 常駐）",
+            value=(
+                "`/volume <1-200>`  `/loop`  `/filter`  `/autoradio`  `/sfx`\n"
+                "`/247`（24/7 常駐）  `/sponsorblock`（跳過非音樂/業配段）"
+            ),
         )
         embed.add_field(
             name="✨ 特殊功能", inline=False,

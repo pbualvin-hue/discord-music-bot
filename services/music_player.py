@@ -293,40 +293,23 @@ class MusicPlayer:
             await self.play_next(guild_id, _skip_count + 1)
             return
 
-        ffmpeg_opts = build_ffmpeg_options(state.audio_filter)
-        before_opts = FFMPEG_BEFORE_OPTIONS
-        if song.source == "bilibili":
-            # bilivideo CDN rejects requests without a bilibili Referer/UA.
-            from services.bilibili_service import BILI_FFMPEG_HEADERS
-            before_opts = f'-headers "{BILI_FFMPEG_HEADERS}" {FFMPEG_BEFORE_OPTIONS}'
-        try:
-            raw = discord.FFmpegPCMAudio(
-                stream_url,
-                before_options=before_opts,
-                options=ffmpeg_opts,
-                executable=FFMPEG_PATH,
-            )
-            source = discord.PCMVolumeTransformer(raw, volume=state.volume)
-        except Exception as exc:
-            logger.error("[Guild %s] FFmpeg error for '%s': %s", guild_id, song.title, exc)
+        state.current_stream_url = stream_url
+
+        # SponsorBlock: look up segments to skip (YouTube, non-live only)
+        state.sponsor_segments = []
+        if state.sponsorblock_enabled and not song.is_live:
+            from services.sponsorblock_service import get_sponsor_segments
+            state.sponsor_segments = await get_sponsor_segments(song.url)
+            if state.sponsor_segments:
+                logger.info(
+                    "[Guild %s] SponsorBlock: %d segment(s) for '%s'",
+                    guild_id, len(state.sponsor_segments), song.title,
+                )
+
+        if not await self._play_from(guild_id, song, stream_url, 0.0):
             state.current_song = None
             await self.play_next(guild_id, _skip_count + 1)
             return
-
-        state.play_start_time = time.time()
-        state.paused_at = None
-        state.total_paused = 0.0
-
-        event_loop = asyncio.get_running_loop()
-
-        def _after(error: Optional[Exception]) -> None:
-            if error:
-                logger.error("[Guild %s] Playback error: %s", guild_id, error)
-            asyncio.run_coroutine_threadsafe(self.play_next(guild_id), event_loop)
-
-        self._cancel_idle_timer(guild_id)
-        state.voice_client.play(source, after=_after)
-        logger.info("[Guild %s] Now playing: %s (req: %s)", guild_id, song.title, song.requester)
 
         # Fire-and-forget: stats + on_song_start callback
         task = asyncio.create_task(
@@ -344,6 +327,133 @@ class MusicPlayer:
         # Prefetch stream URL for the next song in the background
         if state.queue:
             asyncio.create_task(self._prefetch_next(guild_id, state.queue[0]))
+
+    # ── Source build / seek / SponsorBlock ──────────────────────────────
+
+    async def _play_from(
+        self, guild_id: int, song: Song, stream_url: str, start_at: float = 0.0
+    ) -> bool:
+        """Build and start an FFmpeg source for *song*, optionally seeking to
+        *start_at* seconds. Returns False if playback couldn't be started."""
+        state = self.get_state(guild_id)
+        if not state.voice_client or not state.voice_client.is_connected():
+            return False
+
+        start_at = self._adjust_for_sponsor(state, start_at)
+        ffmpeg_opts = build_ffmpeg_options(state.audio_filter)
+        before_opts = FFMPEG_BEFORE_OPTIONS
+        if song.source == "bilibili":
+            from services.bilibili_service import BILI_FFMPEG_HEADERS
+            before_opts = f'-headers "{BILI_FFMPEG_HEADERS}" {FFMPEG_BEFORE_OPTIONS}'
+        if start_at > 0:
+            before_opts = f"-ss {start_at:.2f} {before_opts}"
+        try:
+            raw = discord.FFmpegPCMAudio(
+                stream_url, before_options=before_opts, options=ffmpeg_opts, executable=FFMPEG_PATH
+            )
+            source = discord.PCMVolumeTransformer(raw, volume=state.volume)
+        except Exception as exc:
+            logger.error("[Guild %s] FFmpeg error for '%s': %s", guild_id, song.title, exc)
+            return False
+
+        # play_start_time is shifted back by start_at so get_progress reads correctly
+        state.play_start_time = time.time() - start_at
+        state.paused_at = None
+        state.total_paused = 0.0
+        self._cancel_idle_timer(guild_id)
+        state.voice_client.play(source, after=self._make_after(guild_id, song, stream_url))
+        logger.info(
+            "[Guild %s] Now playing: %s @%.0fs (req: %s)",
+            guild_id, song.title, start_at, song.requester,
+        )
+        self._start_sponsor_watch(guild_id, song)
+        return True
+
+    def _make_after(self, guild_id: int, song: Song, stream_url: str):
+        loop = asyncio.get_running_loop()
+
+        def _after(error: Optional[Exception]) -> None:
+            if error:
+                logger.error("[Guild %s] Playback error: %s", guild_id, error)
+            state = self.get_state(guild_id)
+            if state.seeking:
+                state.seeking = False
+                asyncio.run_coroutine_threadsafe(
+                    self._resume_seek(guild_id, song, stream_url, state.seek_target), loop
+                )
+            else:
+                asyncio.run_coroutine_threadsafe(self.play_next(guild_id), loop)
+
+        return _after
+
+    async def _resume_seek(self, guild_id: int, song: Song, stream_url: str, target: float) -> None:
+        if not await self._play_from(guild_id, song, stream_url, target):
+            await self.play_next(guild_id)
+
+    async def seek(self, guild_id: int, seconds: float) -> Optional[int]:
+        """Seek the current song to *seconds*. Returns the clamped position, or
+        None if seeking isn't possible (no song / live stream / not playing)."""
+        state = self.get_state(guild_id)
+        song = state.current_song
+        if not song or song.is_live or not song.duration:
+            return None
+        seconds = max(0, min(int(seconds), max(0, song.duration - 1)))
+        if not state.current_stream_url:
+            state.current_stream_url = await get_stream_url(song)
+        if not state.current_stream_url:
+            return None
+        if not (state.voice_client and (state.voice_client.is_playing() or state.voice_client.is_paused())):
+            return None
+        self._cancel_sponsor_watch(guild_id)
+        state.seek_target = float(seconds)
+        state.seeking = True
+        state.voice_client.stop()  # _after fires -> _resume_seek(seek_target)
+        return seconds
+
+    def _adjust_for_sponsor(self, state: GuildState, start_at: float) -> float:
+        for (a, b) in state.sponsor_segments:
+            if a - 0.6 <= start_at < b:
+                return b
+        return start_at
+
+    def _start_sponsor_watch(self, guild_id: int, song: Song) -> None:
+        self._cancel_sponsor_watch(guild_id)
+        state = self.get_state(guild_id)
+        if not state.sponsor_segments:
+            return
+        state.sponsor_watch_task = asyncio.create_task(self._sponsor_watch(guild_id, song))
+
+    def _cancel_sponsor_watch(self, guild_id: int) -> None:
+        state = self.get_state(guild_id)
+        if state.sponsor_watch_task and not state.sponsor_watch_task.done():
+            state.sponsor_watch_task.cancel()
+        state.sponsor_watch_task = None
+
+    async def _sponsor_watch(self, guild_id: int, song: Song) -> None:
+        """Poll playback position and seek past any skip segment we enter."""
+        state = self.get_state(guild_id)
+        try:
+            while True:
+                await asyncio.sleep(1.0)
+                if state.current_song is not song:
+                    return
+                prog = self.get_progress(guild_id)
+                seg = next(
+                    ((a, b) for (a, b) in state.sponsor_segments if a - 0.6 <= prog < b), None
+                )
+                if seg and state.voice_client and state.voice_client.is_playing():
+                    logger.info("[Guild %s] SponsorBlock skip %.1f→%.1f", guild_id, seg[0], seg[1])
+                    await self.seek(guild_id, seg[1])
+                    return  # the seek restarts the watch
+                if not state.sponsor_segments or prog >= state.sponsor_segments[-1][1]:
+                    return  # past the last segment — nothing left to skip
+        except asyncio.CancelledError:
+            return
+
+    def set_sponsorblock(self, guild_id: int) -> bool:
+        state = self.get_state(guild_id)
+        state.sponsorblock_enabled = not state.sponsorblock_enabled
+        return state.sponsorblock_enabled
 
     async def _fire_start_hook(self, guild_id: int, song: Song) -> None:
         try:
@@ -370,6 +480,9 @@ class MusicPlayer:
             state.current_song = None   # bypass loop re-insertion
             state.prefetch_url = None   # prefetch is for the old queue order
             state.prefetch_song = None
+            state.seeking = False       # this stop() is a real skip, not a seek
+            state.current_stream_url = None
+            self._cancel_sponsor_watch(guild_id)
             state.voice_client.stop()
             logger.info("[Guild %s] Skipped.", guild_id)
             return True
@@ -403,6 +516,10 @@ class MusicPlayer:
         state.paused_at = None
         state.total_paused = 0.0
         state.play_message = ""
+        state.seeking = False
+        state.current_stream_url = None
+        state.sponsor_segments = []
+        self._cancel_sponsor_watch(guild_id)
         self._cancel_idle_timer(guild_id)
         if state.voice_client and (state.voice_client.is_playing() or state.voice_client.is_paused()):
             state.voice_client.stop()
