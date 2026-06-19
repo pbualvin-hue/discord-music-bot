@@ -453,6 +453,10 @@ class MusicPlayer:
     def set_sponsorblock(self, guild_id: int) -> bool:
         state = self.get_state(guild_id)
         state.sponsorblock_enabled = not state.sponsorblock_enabled
+        if not state.sponsorblock_enabled:
+            # turning off mid-song: stop skipping the already-fetched segments
+            self._cancel_sponsor_watch(guild_id)
+            state.sponsor_segments = []
         return state.sponsorblock_enabled
 
     async def _fire_start_hook(self, guild_id: int, song: Song) -> None:

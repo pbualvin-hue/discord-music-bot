@@ -286,12 +286,18 @@ class MusicCog(commands.Cog, name="Music"):
             and (song.duration == 0 or song.duration > 10)
         )
 
-        # D1 + D3: stop updater, grey out embed
+        # D1 + D3: stop updater. In auto-popup mode delete the old panel (a fresh
+        # one pops next song) so greyed "已播完" panels don't pile up; with a
+        # dedicated music channel keep the grey-out behaviour.
         self._cancel_live_embed(guild_id)
         if state.live_embed_message:
+            auto_popup = not await get_music_channel(guild_id)
             try:
-                embed = _build_nowplaying_embed(song, state, float(song.duration), False, ended=True)
-                await state.live_embed_message.edit(embed=embed, view=None)
+                if auto_popup:
+                    await state.live_embed_message.delete()
+                else:
+                    embed = _build_nowplaying_embed(song, state, float(song.duration), False, ended=True)
+                    await state.live_embed_message.edit(embed=embed, view=None)
             except Exception:
                 pass
             state.live_embed_message = None
