@@ -45,7 +45,12 @@ from services.stats_service import (
     save_playlist,
     update_music_channel_message,
 )
-from services.bilibili_service import is_bilibili_url, resolve_bilibili_song
+from services.bilibili_service import (
+    is_bilibili_url,
+    resolve_bilibili_song,
+    search_bilibili,
+    strip_bili_prefix,
+)
 from services.youtube_service import (
     get_playlist_songs,
     is_playlist_url,
@@ -507,7 +512,7 @@ class MusicCog(commands.Cog, name="Music"):
 
     @app_commands.command(name="play", description="播放音樂 — YouTube/Bilibili 連結、Playlist 或搜尋關鍵字")
     @app_commands.describe(
-        query="YouTube / Bilibili 連結，或搜尋關鍵字",
+        query="YouTube/Bilibili 連結、Playlist，或關鍵字（加 bili 前綴搜 Bilibili，如：bili 五月天）",
         message="附上留言，顯示在 Now Playing 卡片上",
     )
     async def play(
@@ -560,11 +565,17 @@ class MusicCog(commands.Cog, name="Music"):
                 await interaction.followup.send(f"✅ 已加入 Queue：**{song.title}** `[{song.duration_str}]`")
 
         else:
-            results = await search_multiple(query, requester)
+            bili_kw = strip_bili_prefix(query)
+            if bili_kw is not None:
+                results = await search_bilibili(bili_kw, requester)
+                src_label, src_query = "Bilibili", bili_kw
+            else:
+                results = await search_multiple(query, requester)
+                src_label, src_query = "YouTube", query
             if not results:
-                await interaction.followup.send("❌ 找不到歌曲。")
+                await interaction.followup.send(f"❌ 在 {src_label} 找不到「{src_query}」。")
                 return
-            embed = discord.Embed(title=f"🔍 搜尋結果：{query}", color=discord.Color.blurple())
+            embed = discord.Embed(title=f"🔍 {src_label} 搜尋：{src_query}", color=discord.Color.blurple())
             for i, s in enumerate(results, 1):
                 embed.add_field(name=f"{i}. {s.title}", value=f"⏱ {s.duration_str}", inline=False)
             if results[0].thumbnail:
@@ -1218,6 +1229,7 @@ class MusicCog(commands.Cog, name="Music"):
             name="▶️ 播放控制", inline=False,
             value=(
                 "`/play <YouTube/Bilibili 連結 · Playlist · 關鍵字>`\n"
+                "　關鍵字預設搜 YouTube；加 `bili ` 前綴搜 Bilibili（例：`bili 五月天 倔強`）\n"
                 "`/pause`  `/resume`  `/skip`（DJ/點歌者）  `/stop`（DJ）"
             ),
         )

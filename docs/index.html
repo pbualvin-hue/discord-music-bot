@@ -156,7 +156,7 @@ const COMMANDS = [
     {cmd:"/leave", desc:"讓 Bot 離開語音頻道", perm:"all"},
   ]},
   {cat:"播放", em:"▶️", title:"播放控制", items:[
-    {cmd:"/play", args:"<連結 / 關鍵字> [message]", desc:"播放 YouTube 或 Bilibili 連結、YouTube Playlist，或用關鍵字搜尋後從選單挑選。可附 message 顯示在卡片上。", perm:"all", tags:"bilibili b站 youtube 播放 點歌 search"},
+    {cmd:"/play", args:"<連結 / 關鍵字> [message]", desc:"播放 YouTube／Bilibili 連結（含 b23.tv 短連結與 App 分享文字）、YouTube Playlist，或關鍵字搜尋。關鍵字預設搜 YouTube；加 bili 前綴搜 Bilibili，例如「bili 五月天 倔強」。", perm:"all", tags:"bilibili b站 youtube 播放 點歌 search b23"},
     {cmd:"/pause", desc:"暫停目前播放", perm:"all"},
     {cmd:"/resume", desc:"繼續播放", perm:"all"},
     {cmd:"/skip", desc:"跳過目前歌曲（DJ 或該歌點歌者）", perm:"self", tags:"跳歌"},
