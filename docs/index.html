@@ -134,42 +134,181 @@
     opacity:0;transition:.25s;pointer-events:none;z-index:60;box-shadow:var(--shadow)}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+  /* ── main mascot: bearded dragon reactions ─────────── */
+  .mascot{width:140px;height:140px;margin:0 auto 2px;filter:drop-shadow(0 6px 16px #2ee68f44);cursor:pointer}
+  .mascot .beard{transform-box:fill-box;transform-origin:center;transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+  .mascot:hover .beard{transform:scale(1.18) translateY(3px)}      /* beard puffs out */
+  .mascot .bd-head{transform-box:fill-box;transform-origin:60% 90%;transition:transform .35s ease}
+  .mascot:hover .bd-head{transform:rotate(-7deg)}                  /* curious head tilt */
+  .mascot .lid{transform-box:fill-box;transform-origin:center;transition:transform .12s}
+  .mascot:hover .lid{transform:scaleY(.15)}                        /* quick wink */
+  .mascot:active{animation:hop .4s}
+  @keyframes hop{40%{transform:translateY(-12px)}70%{transform:translateY(0)}}
+
+  /* ── background lizards layer ──────────────────────── */
+  .critters{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+  .critter{position:absolute;pointer-events:auto;opacity:.5;transition:opacity .25s, transform .4s ease}
+  .critter:hover{opacity:1}
+  @keyframes sway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+  @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+  /* chameleon — bottom-left, tongue flicks on hover */
+  .c-cham{left:-6px;bottom:64px;width:120px;animation:sway 6s ease-in-out infinite;transform-origin:bottom right}
+  .c-cham .tongue{transform-box:fill-box;transform-origin:left center;transform:scaleX(0);transition:transform .25s cubic-bezier(.34,1.8,.64,1)}
+  .c-cham:hover .tongue{transform:scaleX(1)}
+  .c-cham .eye-turret{transform-box:fill-box;transform-origin:center;transition:transform .3s}
+  .c-cham:hover .eye-turret{transform:rotate(28deg)}
+  /* frilled lizard — right side, frill opens on hover */
+  .c-frill{right:-10px;top:38%;width:96px;animation:breathe 5s ease-in-out infinite}
+  .c-frill .frill{transform-box:fill-box;transform-origin:center;transform:scale(.55);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+  .c-frill:hover .frill{transform:scale(1)}
+  /* leopard gecko — top-right, blinks on hover */
+  .c-leo{right:46px;top:18px;width:104px;animation:sway 7s ease-in-out infinite}
+  .c-leo .lid{transform-box:fill-box;transform-origin:center;transition:transform .12s}
+  .c-leo:hover .lid{transform:scaleY(.1)}
+  /* tiny gecko — mid-left, wiggles on hover */
+  .c-mini{left:14px;top:30%;width:64px;animation:sway 5.5s ease-in-out infinite}
+  .c-mini:hover{transform:translateX(8px) rotate(6deg)}
+  @media(max-width:880px){.c-cham,.c-leo{opacity:.28}.c-frill,.c-mini{display:none}}
+
+  /* ── themed demo (animated faux Now-Playing) ───────── */
+  .demo-wrap{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;align-items:stretch}
+  .np{background:linear-gradient(160deg,#0e2418,#0b1a12);border:1px solid var(--edge);border-left:4px solid var(--gecko);
+    border-radius:14px;padding:16px;display:flex;gap:14px;position:relative;overflow:hidden}
+  .np .art{width:84px;height:84px;border-radius:12px;flex:none;position:relative;
+    background:conic-gradient(from 0deg,#0c1f15,#14352340,#0c1f15);display:grid;place-items:center;border:1px solid var(--edge)}
+  .np .vinyl{width:58px;height:58px;border-radius:50%;background:repeating-radial-gradient(circle,#0a1610 0 2px,#10271a 2px 4px);
+    display:grid;place-items:center;animation:spin 4s linear infinite}
+  .np .vinyl b{width:16px;height:16px;border-radius:50%;background:var(--grad)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .np .meta{flex:1;min-width:0}
+  .np .tt{font-weight:700;font-family:var(--head);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .np .ar{color:var(--muted);font-size:.84rem;margin-top:1px}
+  .np .bar{height:6px;border-radius:4px;background:#0a1610;margin:12px 0 5px;overflow:hidden}
+  .np .fill{height:100%;width:42%;background:var(--grad);border-radius:4px;animation:prog 9s linear infinite}
+  @keyframes prog{0%{width:6%}100%{width:97%}}
+  .np .time{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);font-family:'Cascadia Code',monospace}
+  .np .ctrls{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}
+  .np .b{width:30px;height:30px;border-radius:8px;background:#10271a;border:1px solid var(--edge);display:grid;place-items:center;font-size:.85rem;transition:.15s}
+  .np .b:hover{border-color:var(--gecko);transform:translateY(-2px)}
+  .np .req{position:absolute;right:12px;bottom:10px;font-size:.7rem;color:var(--muted)}
+  .demo-note{background:linear-gradient(160deg,#11291bdd,#0d2016ee);border:1px solid var(--edge);border-radius:14px;padding:16px;font-size:.9rem;color:var(--muted);display:flex;flex-direction:column;justify-content:center;gap:9px}
+  .demo-note b{color:var(--gecko)}
+  .demo-note .row{display:flex;align-items:center;gap:9px}
   @media(max-width:680px){
     h1{font-size:2.1rem}.modes{grid-template-columns:1fr}.play-hero h2{flex-wrap:wrap}
+    .demo-wrap{grid-template-columns:1fr}
   }
 </style>
 </head>
 <body>
+
+<!-- ===== background lizard cast (hover each for a reaction) ===== -->
+<div class="critters" aria-hidden="true">
+  <!-- Chameleon (bottom-left): hover → tongue zaps out, eye swivels -->
+  <svg class="critter c-cham" viewBox="0 0 150 110" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="ch" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#19c3a6"/><stop offset="1" stop-color="#b6f24a"/></linearGradient></defs>
+    <path d="M34 80 C12 90 16 64 32 67 C45 69 40 84 28 78" fill="none" stroke="url(#ch)" stroke-width="7" stroke-linecap="round"/>
+    <path d="M54 84 l-4 14 M72 84 l4 14" stroke="url(#ch)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M40 72 q22-28 54-22 q15 3 18 13 q-11 14 -31 16 q-25 3 -41 -7 z" fill="url(#ch)"/>
+    <path d="M50 56 l2-6 M60 50 l2-6 M70 47 l2-6 M80 47 l2-5" stroke="#0e8f7a" stroke-width="3" stroke-linecap="round"/>
+    <path d="M106 44 q13-2 12 11 q-9 4 -15 -3 z" fill="url(#ch)"/>
+    <g class="eye-turret"><circle cx="100" cy="58" r="9" fill="url(#ch)" stroke="#0e8f7a" stroke-width="2"/><circle cx="100" cy="58" r="3.4" fill="#0a160f"/><circle cx="101" cy="57" r="1.2" fill="#fff"/></g>
+    <path d="M111 65 q6 1 9 -1" fill="none" stroke="#0e8f7a" stroke-width="2.4" stroke-linecap="round"/>
+    <g class="tongue"><rect x="119" y="63" width="24" height="4" rx="2" fill="#ff7a8a"/><circle cx="143" cy="65" r="4.5" fill="#ff7a8a"/></g>
+  </svg>
+
+  <!-- Frilled lizard (right): hover → neck frill flares open -->
+  <svg class="critter c-frill" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="fr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7fe34a"/><stop offset="1" stop-color="#19c3a6"/></linearGradient></defs>
+    <path d="M70 64 C96 60 108 74 104 92" fill="none" stroke="url(#fr)" stroke-width="9" stroke-linecap="round"/>
+    <g class="frill"><circle cx="50" cy="60" r="42" fill="#d98a2e" opacity=".9"/>
+      <g stroke="#b5701f" stroke-width="2"><path d="M50 18 v-8 M30 24 l-5-7 M70 24 l5-7 M16 44 l-8-3 M84 44 l8-3 M14 70 l-8 3 M86 70 l8 3 M30 94 l-5 7 M70 94 l5 7"/></g></g>
+    <ellipse cx="56" cy="62" rx="24" ry="20" fill="url(#fr)"/>
+    <path d="M40 50 l-4-5 M50 46 l-2-6 M62 46 l2-6" stroke="#0e8f7a" stroke-width="3" stroke-linecap="round"/>
+    <g><circle cx="48" cy="60" r="6.5" fill="#0a160f"/><circle cx="50" cy="58" r="2.2" fill="#fff"/><rect class="lid" x="40" y="53" width="15" height="7" rx="3.5" fill="url(#fr)"/></g>
+    <g><circle cx="66" cy="60" r="6.5" fill="#0a160f"/><circle cx="68" cy="58" r="2.2" fill="#fff"/><rect class="lid" x="58" y="53" width="15" height="7" rx="3.5" fill="url(#fr)"/></g>
+    <path d="M50 70 q7 5 14 0" fill="none" stroke="#0e8f7a" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M36 64 l-12 2 M36 68 l-12 5" stroke="#0e8f7a" stroke-width="2" stroke-linecap="round"/>
+  </svg>
+
+  <!-- Leopard gecko (top-right): hover → big sleepy blink -->
+  <svg class="critter c-leo" viewBox="0 0 130 100" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="le" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd98a"/><stop offset="1" stop-color="#e8b04a"/></linearGradient></defs>
+    <path d="M40 64 C16 70 12 50 30 50" fill="none" stroke="url(#le)" stroke-width="10" stroke-linecap="round"/>
+    <path d="M22 56 l0-4 M28 51 l-1-4 M34 50 l1-4" stroke="#b5701f" stroke-width="2" stroke-linecap="round"/>
+    <ellipse cx="74" cy="58" rx="34" ry="22" fill="url(#le)"/>
+    <g fill="#a86a2c" opacity=".55"><circle cx="60" cy="50" r="3"/><circle cx="78" cy="46" r="3.2"/><circle cx="92" cy="54" r="2.6"/><circle cx="70" cy="64" r="2.6"/><circle cx="86" cy="66" r="3"/></g>
+    <ellipse cx="104" cy="50" rx="18" ry="15" fill="url(#le)"/>
+    <g><circle cx="104" cy="48" r="8" fill="#0a160f"/><circle cx="107" cy="45" r="2.6" fill="#fff"/><rect class="lid" x="95" y="39" width="18" height="9" rx="4.5" fill="url(#le)"/></g>
+    <path d="M110 56 q5 3 9 1" fill="none" stroke="#b5701f" stroke-width="2.4" stroke-linecap="round"/>
+  </svg>
+
+  <!-- Mini gecko (mid-left): hover → happy wiggle -->
+  <svg class="critter c-mini" viewBox="0 0 90 90" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="mn" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2ee68f"/><stop offset="1" stop-color="#19c3a6"/></linearGradient></defs>
+    <path d="M44 58 C64 66 66 48 52 48" fill="none" stroke="url(#mn)" stroke-width="7" stroke-linecap="round"/>
+    <path d="M30 40 l-9-6 M30 56 l-9 7 M58 40 l9-6 M58 56 l9 7" stroke="url(#mn)" stroke-width="5" stroke-linecap="round"/>
+    <ellipse cx="44" cy="48" rx="18" ry="20" fill="url(#mn)"/>
+    <ellipse cx="44" cy="28" rx="15" ry="13" fill="url(#mn)"/>
+    <circle cx="38" cy="26" r="5" fill="#0a160f"/><circle cx="39" cy="24" r="1.8" fill="#fff"/>
+    <circle cx="51" cy="26" r="5" fill="#0a160f"/><circle cx="52" cy="24" r="1.8" fill="#fff"/>
+    <path d="M40 34 q5 4 10 0" fill="none" stroke="#0a160f" stroke-width="2" stroke-linecap="round"/>
+  </svg>
+</div>
+
 <div class="wrap">
 <header>
-  <!-- Gecko-with-headphones mascot -->
-  <svg class="mascot" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-label="戴耳機的蜥蜴">
+  <!-- Bearded dragon (鬆獅蜥) DJ mascot — hover to puff its beard & wink -->
+  <svg class="mascot" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg" aria-label="戴耳機的鬆獅蜥 DJ">
     <defs>
-      <linearGradient id="gk" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#2ee68f"/><stop offset=".55" stop-color="#7fe34a"/><stop offset="1" stop-color="#19c3a6"/>
+      <linearGradient id="bd" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#e8b04a"/><stop offset=".5" stop-color="#c9883a"/><stop offset="1" stop-color="#a86a2c"/>
+      </linearGradient>
+      <linearGradient id="bdl" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#ffd98a"/><stop offset="1" stop-color="#e8b04a"/>
       </linearGradient>
     </defs>
-    <!-- curled tail -->
-    <path d="M60 84 C40 96 30 84 36 70 C40 60 52 62 50 74" fill="none" stroke="url(#gk)" stroke-width="9" stroke-linecap="round"/>
-    <!-- body -->
-    <ellipse cx="62" cy="58" rx="26" ry="30" fill="url(#gk)"/>
-    <!-- legs -->
-    <path d="M40 52 L26 44 M40 70 L26 80 M84 52 L98 44 M84 70 L98 80" stroke="url(#gk)" stroke-width="7" stroke-linecap="round"/>
-    <!-- head -->
-    <ellipse cx="62" cy="30" rx="20" ry="17" fill="url(#gk)"/>
-    <!-- belly scales -->
-    <path d="M62 40 q6 8 0 16 q-6 8 0 16" fill="none" stroke="#0a160f" stroke-width="2" opacity=".25"/>
-    <!-- eyes -->
-    <circle cx="54" cy="27" r="6" fill="#0a160f"/><circle cx="56" cy="25" r="2" fill="#ffc94d"/>
-    <circle cx="71" cy="27" r="6" fill="#0a160f"/><circle cx="73" cy="25" r="2" fill="#ffc94d"/>
-    <!-- smile -->
-    <path d="M56 36 q6 5 12 0" fill="none" stroke="#0a160f" stroke-width="2" stroke-linecap="round"/>
+    <!-- striped tail -->
+    <path d="M74 96 C100 104 112 92 110 78" fill="none" stroke="url(#bd)" stroke-width="11" stroke-linecap="round"/>
+    <path d="M92 96 l3 7 M101 95 l3 6 M108 88 l5 4" stroke="#8a5520" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- stubby legs with toes -->
+    <g stroke="url(#bd)" stroke-width="9" stroke-linecap="round">
+      <path d="M50 90 L40 104"/><path d="M84 90 L94 104"/>
+    </g>
+    <path d="M37 104 l-4 4 M40 106 l0 5 M44 106 l3 4 M91 106 l-3 4 M94 106 l0 5 M98 104 l4 4" stroke="#a86a2c" stroke-width="3" stroke-linecap="round"/>
+    <!-- chunky body with lateral spikes -->
+    <ellipse cx="66" cy="78" rx="30" ry="24" fill="url(#bd)"/>
+    <path d="M40 70 l-5-4 M40 80 l-6 0 M40 90 l-5 4 M92 70 l5-4 M92 80 l6 0 M92 90 l5 4" stroke="#8a5520" stroke-width="3" stroke-linecap="round"/>
+    <!-- belly -->
+    <ellipse cx="66" cy="84" rx="17" ry="13" fill="url(#bdl)" opacity=".7"/>
+    <!-- ── head group (tilts on hover) ── -->
+    <g class="bd-head">
+      <!-- spiky beard (puffs on hover) -->
+      <g class="beard">
+        <path d="M48 56 l-7 5 M52 62 l-8 4 M58 66 l-6 7 M66 68 l0 9 M74 66 l6 7 M80 62 l8 4 M84 56 l7 5"
+              stroke="#6b3f18" stroke-width="6" stroke-linecap="round"/>
+        <ellipse cx="66" cy="58" rx="20" ry="11" fill="#6b3f18"/>
+      </g>
+      <!-- head -->
+      <ellipse cx="66" cy="44" rx="24" ry="19" fill="url(#bdl)"/>
+      <!-- crown spikes -->
+      <path d="M48 32 l-5-5 M57 27 l-3-7 M66 25 l0-8 M75 27 l3-7 M84 32 l5-5" stroke="#c9883a" stroke-width="4" stroke-linecap="round"/>
+      <!-- cheeks -->
+      <circle cx="50" cy="48" r="4" fill="#ff9aa0" opacity=".5"/><circle cx="82" cy="48" r="4" fill="#ff9aa0" opacity=".5"/>
+      <!-- eyes (lids scaleY on hover = wink) -->
+      <g><circle cx="57" cy="42" r="7" fill="#0a160f"/><circle cx="59" cy="40" r="2.4" fill="#fff"/>
+         <rect class="lid" x="49" y="34" width="16" height="8" rx="4" fill="url(#bdl)"/></g>
+      <g><circle cx="75" cy="42" r="7" fill="#0a160f"/><circle cx="77" cy="40" r="2.4" fill="#fff"/>
+         <rect class="lid" x="67" y="34" width="16" height="8" rx="4" fill="url(#bdl)"/></g>
+      <!-- snug smile -->
+      <path d="M60 52 q6 5 12 0" fill="none" stroke="#6b3f18" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
     <!-- headphones -->
-    <path d="M40 28 a22 22 0 0 1 44 0" fill="none" stroke="#0a160f" stroke-width="5" stroke-linecap="round"/>
-    <rect x="34" y="24" width="10" height="16" rx="5" fill="#0a160f"/>
-    <rect x="80" y="24" width="10" height="16" rx="5" fill="#ffc94d"/>
-    <!-- music note -->
-    <g transform="translate(92 70)"><circle cx="0" cy="8" r="4" fill="#ffc94d"/><rect x="3" y="-6" width="2.5" height="14" fill="#ffc94d"/><path d="M3.5 -6 q7 1 7 6" stroke="#ffc94d" stroke-width="2.5" fill="none"/></g>
+    <path d="M42 40 a24 24 0 0 1 48 0" fill="none" stroke="#173a28" stroke-width="5" stroke-linecap="round"/>
+    <rect x="36" y="36" width="11" height="17" rx="5.5" fill="#173a28"/>
+    <rect x="85" y="36" width="11" height="17" rx="5.5" fill="#2ee68f"/>
+    <!-- bouncing music note -->
+    <g transform="translate(104 60)"><circle cx="0" cy="8" r="4.5" fill="#2ee68f"/><rect x="3.4" y="-7" width="2.6" height="15" fill="#2ee68f"/><path d="M4 -7 q7 1 7 6" stroke="#2ee68f" stroke-width="2.6" fill="none"/></g>
   </svg>
   <h1><span class="g">Gecko Groove</span></h1>
   <div class="eq"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
@@ -206,6 +345,32 @@
     </div>
   </div>
 </div>
+
+<!-- ===== 主題化示範：實際播放時長這樣 ===== -->
+<section style="margin-top:30px">
+  <div class="sec-title"><span class="em">🎬</span> 播放時長這樣（即時示範）</div>
+  <div class="demo-wrap">
+    <div class="np">
+      <div class="art"><div class="vinyl"><b></b></div></div>
+      <div class="meta">
+        <div class="tt">五月天 — 倔強</div>
+        <div class="ar">🦎 點歌：濕鞋蜥蜥　·　🔊 20%</div>
+        <div class="bar"><div class="fill"></div></div>
+        <div class="time"><span>01:18</span><span>04:24</span></div>
+        <div class="ctrls">
+          <div class="b">⏮</div><div class="b">⏸</div><div class="b">⏭</div>
+          <div class="b">🔀</div><div class="b">🔁</div><div class="b">🎤</div><div class="b">🔊</div>
+        </div>
+      </div>
+      <div class="req">⭐ 播完可評分</div>
+    </div>
+    <div class="demo-note">
+      <div class="row">🎛️ <span>這是 <b>Now Playing 控制台</b>的樣子 —— 旋轉唱片、即時進度條、一排按鈕直接點。</span></div>
+      <div class="row">🔁 <span>每 <b>15 秒</b>自動更新進度；開 <b>🎤 KTV</b> 還會逐行同步歌詞。</span></div>
+      <div class="row">🦎 <span>歌名、進度、按鈕都是真實介面的還原，方便對照。</span></div>
+    </div>
+  </div>
+</section>
 
 <!-- ===== 搜尋 + 分類 ===== -->
 <div class="controls">
