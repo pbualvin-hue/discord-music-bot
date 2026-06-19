@@ -3,148 +3,261 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🎵 Discord Music Bot — 互動式使用手冊</title>
+<title>🦎🎵 Gecko Groove — Discord Music Bot 使用手冊</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0b0d12; --panel:#161a23; --panel2:#1e2430; --edge:#2b3242;
-    --txt:#e6e9ef; --muted:#9aa3b2; --accent:#5865F2; --accent2:#3ba55d;
-    --gold:#faa61a; --pink:#eb459e; --red:#ed4245; --code:#0a84ff;
+    /* Gecko Groove palette — jungle greens + chameleon lime + amber eye */
+    --bg:#0a160f; --bg2:#0d2016; --panel:#10271a; --panel2:#163322; --edge:#1f4a33;
+    --gecko:#2ee68f; --lime:#b6f24a; --teal:#19c3a6; --amber:#ffc94d; --coral:#ff7a8a;
+    --txt:#eafaf0; --muted:#8fb3a0;
+    --grad:linear-gradient(100deg,#2ee68f 0%,#b6f24a 50%,#19c3a6 100%);
+    --shadow:0 10px 30px #00000055;
+    --head:'Poppins','Noto Sans TC',sans-serif;
+    --body:'Noto Sans TC','Poppins',system-ui,sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth}
   body{
-    font-family:'Segoe UI','PingFang TC','Microsoft JhengHei',system-ui,sans-serif;
-    background:radial-gradient(1200px 600px at 50% -10%,#1b2030 0,var(--bg) 60%);
-    color:var(--txt);line-height:1.6;min-height:100vh;padding-bottom:60px;
+    font-family:var(--body);color:var(--txt);line-height:1.65;min-height:100vh;padding-bottom:70px;
+    background:
+      radial-gradient(900px 500px at 85% -5%,#13402a55 0,transparent 60%),
+      radial-gradient(700px 450px at 10% 5%,#1b4d3a44 0,transparent 55%),
+      var(--bg);
+    background-attachment:fixed;
   }
-  .wrap{max-width:1040px;margin:0 auto;padding:0 18px}
-  header{text-align:center;padding:54px 18px 26px}
-  header h1{font-size:2.5rem;font-weight:800;letter-spacing:.5px;
-    background:linear-gradient(90deg,#7d8cff,#b06bff,#ff7ac0);
-    -webkit-background-clip:text;background-clip:text;color:transparent}
-  header p{color:var(--muted);margin-top:8px;font-size:1.05rem}
-  .badges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px}
-  .pill{background:var(--panel2);border:1px solid var(--edge);border-radius:999px;
-    padding:5px 13px;font-size:.82rem;color:var(--muted)}
+  /* faint reptile-scale texture overlay */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;
+    background-image:radial-gradient(circle at 50% 0,#ffffff08 0 22%,transparent 23%);
+    background-size:26px 26px;background-position:0 0,13px 13px;
+  }
+  .wrap{max-width:1060px;margin:0 auto;padding:0 18px;position:relative;z-index:1}
+
+  /* ── Hero ─────────────────────────────────────────── */
+  header{text-align:center;padding:50px 18px 14px;position:relative}
+  .mascot{width:118px;height:118px;margin:0 auto 6px;filter:drop-shadow(0 6px 16px #2ee68f44)}
+  h1{font-family:var(--head);font-size:2.7rem;font-weight:800;letter-spacing:.5px;line-height:1.1}
+  h1 .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  header .sub{color:var(--muted);margin-top:10px;font-size:1.05rem}
+  /* equalizer bars */
+  .eq{display:flex;gap:5px;justify-content:center;align-items:flex-end;height:34px;margin:16px 0 4px}
+  .eq i{width:6px;border-radius:3px;background:var(--grad);animation:bounce 1s ease-in-out infinite}
+  .eq i:nth-child(1){animation-delay:-.9s}.eq i:nth-child(2){animation-delay:-.5s}
+  .eq i:nth-child(3){animation-delay:-.7s}.eq i:nth-child(4){animation-delay:-.2s}
+  .eq i:nth-child(5){animation-delay:-.6s}.eq i:nth-child(6){animation-delay:-.3s}
+  .eq i:nth-child(7){animation-delay:-.8s}
+  @keyframes bounce{0%,100%{height:8px}50%{height:34px}}
+  .badges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+  .pill{background:#0e2418cc;border:1px solid var(--edge);border-radius:999px;padding:6px 14px;font-size:.82rem;color:var(--muted)}
   .pill b{color:var(--txt)}
-  .new{background:linear-gradient(90deg,#3ba55d33,#3ba55d11);border-color:#3ba55d66;color:#7fe3a3}
+  .pill.hot{border-color:#2ee68f77;color:var(--gecko)}
 
-  /* controls */
-  .controls{position:sticky;top:0;z-index:20;padding:14px 0 10px;
-    background:linear-gradient(180deg,var(--bg) 70%,transparent);backdrop-filter:blur(4px)}
-  #search{width:100%;padding:13px 16px;font-size:1rem;color:var(--txt);
-    background:var(--panel);border:1px solid var(--edge);border-radius:12px;outline:none}
-  #search:focus{border-color:var(--accent);box-shadow:0 0 0 3px #5865f233}
-  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
-  .chip{cursor:pointer;user-select:none;padding:7px 14px;border-radius:999px;font-size:.86rem;
-    background:var(--panel);border:1px solid var(--edge);color:var(--muted);transition:.15s}
-  .chip:hover{border-color:var(--accent);color:var(--txt)}
-  .chip.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  /* ── /play hero feature ───────────────────────────── */
+  .play-hero{margin-top:30px;background:
+      linear-gradient(160deg,#12301fdd,#0c1f15ee);
+    border:1px solid var(--edge);border-radius:22px;padding:24px 22px 26px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .play-hero::after{content:"🎵";position:absolute;right:-10px;top:-18px;font-size:7rem;opacity:.05;transform:rotate(12deg)}
+  .play-hero h2{font-family:var(--head);font-size:1.5rem;display:flex;align-items:center;gap:10px}
+  .play-hero h2 code{font-size:1.1rem;background:#0c1f15;border:1px solid var(--edge);color:var(--gecko);padding:2px 12px;border-radius:9px}
+  .play-hero .lead{color:var(--muted);margin:6px 0 18px;font-size:.95rem}
+  .modes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .mode{background:#0d2117;border:1px solid var(--edge);border-radius:15px;padding:16px;transition:.18s;position:relative}
+  .mode:hover{border-color:var(--gecko);transform:translateY(-3px);box-shadow:0 10px 26px #00000055}
+  .mode .ic{font-size:1.7rem}
+  .mode h3{font-family:var(--head);font-size:1.05rem;margin:7px 0 5px}
+  .mode p{color:var(--muted);font-size:.88rem;min-height:42px}
+  .ex{display:block;margin-top:11px;font-family:'Cascadia Code',Consolas,monospace;font-size:.82rem;
+    background:#08130d;border:1px solid var(--edge);border-radius:9px;padding:8px 11px;color:#cdebd8;cursor:pointer;transition:.15s;word-break:break-all}
+  .ex:hover{border-color:var(--lime);color:#fff}
+  .ex .tag{color:var(--amber)}
 
-  /* sections */
+  /* ── search controls ──────────────────────────────── */
+  .controls{position:sticky;top:0;z-index:30;padding:16px 0 11px;margin-top:28px;
+    background:linear-gradient(180deg,var(--bg) 72%,transparent);backdrop-filter:blur(6px)}
+  #search{width:100%;padding:14px 18px;font-size:1rem;color:var(--txt);font-family:var(--body);
+    background:#0e2418;border:1px solid var(--edge);border-radius:14px;outline:none;transition:.15s}
+  #search::placeholder{color:#6f9683}
+  #search:focus{border-color:var(--gecko);box-shadow:0 0 0 3px #2ee68f33}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .chip{cursor:pointer;user-select:none;padding:7px 15px;border-radius:999px;font-size:.86rem;
+    background:#0e2418;border:1px solid var(--edge);color:var(--muted);transition:.15s}
+  .chip:hover{border-color:var(--gecko);color:var(--txt)}
+  .chip.active{background:var(--grad);border-color:transparent;color:#06140c;font-weight:700}
+
+  /* ── command sections / cards ─────────────────────── */
   section{margin-top:30px}
-  .sec-title{display:flex;align-items:center;gap:10px;font-size:1.3rem;font-weight:700;margin-bottom:14px}
+  .sec-title{font-family:var(--head);display:flex;align-items:center;gap:11px;font-size:1.3rem;font-weight:700;margin-bottom:15px}
   .sec-title .em{font-size:1.5rem}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:13px}
-  .card{background:var(--panel);border:1px solid var(--edge);border-radius:14px;padding:15px 16px;
-    transition:.15s;position:relative;overflow:hidden}
-  .card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 24px #0006}
-  .cmd{display:inline-flex;align-items:center;gap:7px;font-family:'Cascadia Code',Consolas,monospace;
-    font-size:1.02rem;font-weight:700;color:#9ec5ff;cursor:pointer}
-  .cmd:hover{color:#cfe2ff}
-  .copy{font-size:.7rem;color:var(--muted);opacity:0;transition:.15s}
+  .sec-title::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--edge),transparent)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:13px}
+  .card{background:linear-gradient(160deg,#11291bdd,#0d2016ee);border:1px solid var(--edge);border-radius:15px;
+    padding:15px 16px;transition:.18s;position:relative;overflow:hidden}
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--grad);opacity:0;transition:.18s}
+  .card:hover{border-color:#2ee68f88;transform:translateY(-2px);box-shadow:0 10px 26px #00000055}
+  .card:hover::before{opacity:1}
+  .cmd{display:inline-flex;align-items:center;gap:8px;font-family:'Cascadia Code',Consolas,monospace;
+    font-size:1.02rem;font-weight:700;color:var(--gecko);cursor:pointer}
+  .cmd:hover{color:var(--lime)}
+  .copy{font-size:.68rem;color:var(--muted);opacity:0;transition:.15s}
   .card:hover .copy{opacity:1}
-  .args{font-family:'Cascadia Code',Consolas,monospace;font-size:.82rem;color:var(--gold);margin-top:3px}
-  .desc{color:var(--muted);font-size:.92rem;margin-top:7px}
-  .perm{position:absolute;top:13px;right:13px;font-size:.68rem;padding:3px 8px;border-radius:999px;font-weight:600}
-  .p-all{background:#3ba55d22;color:#7fe3a3;border:1px solid #3ba55d55}
-  .p-dj{background:#ed424522;color:#ff8a8c;border:1px solid #ed424555}
-  .p-self{background:#faa61a22;color:#ffce7a;border:1px solid #faa61a55}
+  .args{font-family:'Cascadia Code',Consolas,monospace;font-size:.8rem;color:var(--amber);margin-top:3px}
+  .desc{color:var(--muted);font-size:.9rem;margin-top:7px}
+  .perm{position:absolute;top:14px;right:14px;font-size:.66rem;padding:3px 9px;border-radius:999px;font-weight:700}
+  .p-all{background:#2ee68f1f;color:var(--gecko);border:1px solid #2ee68f55}
+  .p-dj{background:#ff7a8a1f;color:var(--coral);border:1px solid #ff7a8a55}
+  .p-self{background:#ffc94d1f;color:var(--amber);border:1px solid #ffc94d55}
 
-  /* panel reference */
-  .panel-ref{background:var(--panel);border:1px solid var(--edge);border-radius:14px;padding:18px}
+  .panel-ref{background:linear-gradient(160deg,#11291bdd,#0d2016ee);border:1px solid var(--edge);border-radius:16px;padding:18px}
+  .panel-ref .hint{color:var(--muted);font-size:.92rem;margin-bottom:6px}
+  .panel-ref code{color:var(--gecko)}
   .btn-row{display:flex;gap:9px;flex-wrap:wrap;margin:10px 0}
   .pbtn{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:74px;
-    background:var(--panel2);border:1px solid var(--edge);border-radius:10px;padding:10px 8px}
-  .pbtn .ic{font-size:1.4rem}
-  .pbtn .lb{font-size:.72rem;color:var(--muted)}
+    background:#0d2117;border:1px solid var(--edge);border-radius:11px;padding:11px 8px;transition:.15s}
+  .pbtn:hover{border-color:var(--gecko);transform:translateY(-2px)}
+  .pbtn .ic{font-size:1.4rem}.pbtn .lb{font-size:.72rem;color:var(--muted)}
+  .callout{background:linear-gradient(90deg,#2ee68f14,transparent);border:1px solid #2ee68f3a;border-left:4px solid var(--gecko);
+    border-radius:11px;padding:13px 16px;margin-top:14px;font-size:.92rem}
+  .callout b{color:var(--gecko)}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;font-size:.88rem;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .dot{width:11px;height:11px;border-radius:50%}
 
-  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-size:.86rem;color:var(--muted)}
-  .legend span{display:inline-flex;align-items:center;gap:6px}
-  .dot{width:11px;height:11px;border-radius:50%;display:inline-block}
-
-  .callout{background:linear-gradient(90deg,#3ba55d18,transparent);border:1px solid #3ba55d44;
-    border-left:4px solid var(--accent2);border-radius:10px;padding:13px 16px;margin-top:14px}
-  .callout b{color:#7fe3a3}
   .empty{text-align:center;color:var(--muted);padding:40px;display:none}
-  footer{text-align:center;color:var(--muted);font-size:.84rem;margin-top:46px;padding-top:22px;border-top:1px solid var(--edge)}
-  a{color:#9ec5ff}
-  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
-    background:var(--accent2);color:#fff;padding:10px 18px;border-radius:10px;font-size:.9rem;
-    opacity:0;transition:.25s;pointer-events:none;z-index:50}
+  footer{text-align:center;color:var(--muted);font-size:.84rem;margin-top:48px;padding-top:22px;border-top:1px solid var(--edge)}
+  footer .gk{font-size:1.5rem}
+  a{color:var(--gecko)}
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--grad);color:#06140c;font-weight:700;padding:11px 20px;border-radius:12px;font-size:.9rem;
+    opacity:0;transition:.25s;pointer-events:none;z-index:60;box-shadow:var(--shadow)}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media(max-width:680px){
+    h1{font-size:2.1rem}.modes{grid-template-columns:1fr}.play-hero h2{flex-wrap:wrap}
+  }
 </style>
 </head>
 <body>
+<div class="wrap">
 <header>
-  <h1>🎵 Discord Music Bot</h1>
-  <p>互動式使用手冊 — 點指令即可複製，上方搜尋即時過濾</p>
+  <!-- Gecko-with-headphones mascot -->
+  <svg class="mascot" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-label="戴耳機的蜥蜴">
+    <defs>
+      <linearGradient id="gk" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#2ee68f"/><stop offset=".55" stop-color="#7fe34a"/><stop offset="1" stop-color="#19c3a6"/>
+      </linearGradient>
+    </defs>
+    <!-- curled tail -->
+    <path d="M60 84 C40 96 30 84 36 70 C40 60 52 62 50 74" fill="none" stroke="url(#gk)" stroke-width="9" stroke-linecap="round"/>
+    <!-- body -->
+    <ellipse cx="62" cy="58" rx="26" ry="30" fill="url(#gk)"/>
+    <!-- legs -->
+    <path d="M40 52 L26 44 M40 70 L26 80 M84 52 L98 44 M84 70 L98 80" stroke="url(#gk)" stroke-width="7" stroke-linecap="round"/>
+    <!-- head -->
+    <ellipse cx="62" cy="30" rx="20" ry="17" fill="url(#gk)"/>
+    <!-- belly scales -->
+    <path d="M62 40 q6 8 0 16 q-6 8 0 16" fill="none" stroke="#0a160f" stroke-width="2" opacity=".25"/>
+    <!-- eyes -->
+    <circle cx="54" cy="27" r="6" fill="#0a160f"/><circle cx="56" cy="25" r="2" fill="#ffc94d"/>
+    <circle cx="71" cy="27" r="6" fill="#0a160f"/><circle cx="73" cy="25" r="2" fill="#ffc94d"/>
+    <!-- smile -->
+    <path d="M56 36 q6 5 12 0" fill="none" stroke="#0a160f" stroke-width="2" stroke-linecap="round"/>
+    <!-- headphones -->
+    <path d="M40 28 a22 22 0 0 1 44 0" fill="none" stroke="#0a160f" stroke-width="5" stroke-linecap="round"/>
+    <rect x="34" y="24" width="10" height="16" rx="5" fill="#0a160f"/>
+    <rect x="80" y="24" width="10" height="16" rx="5" fill="#ffc94d"/>
+    <!-- music note -->
+    <g transform="translate(92 70)"><circle cx="0" cy="8" r="4" fill="#ffc94d"/><rect x="3" y="-6" width="2.5" height="14" fill="#ffc94d"/><path d="M3.5 -6 q7 1 7 6" stroke="#ffc94d" stroke-width="2.5" fill="none"/></g>
+  </svg>
+  <h1><span class="g">Gecko Groove</span></h1>
+  <div class="eq"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <p class="sub">🦎 Discord Music Bot · 互動式使用手冊　🎵 點指令即可複製</p>
   <div class="badges">
-    <span class="pill">共 <b>31</b> 個指令</span>
-    <span class="pill new">🆕 支援 <b>Bilibili</b></span>
+    <span class="pill"><b>31</b> 個指令</span>
+    <span class="pill hot">🆕 支援 <b>Bilibili</b>（連結＋關鍵字）</span>
     <span class="pill">預設音量 <b>20%</b></span>
-    <span class="pill">YouTube · Playlist · 關鍵字搜尋</span>
   </div>
 </header>
 
-<div class="wrap">
-  <div class="controls">
-    <input id="search" type="text" placeholder="🔍 搜尋指令或功能… 例如 play、跳歌、歌詞、bilibili" autocomplete="off">
-    <div class="chips" id="chips"></div>
+<!-- ===== /play 三種點歌方式（Hero） ===== -->
+<div class="play-hero">
+  <h2>▶️ 怎麼點歌？　<code>/play</code></h2>
+  <p class="lead">一個指令，三種方式 —— 不用記，照著範例貼就好。點下方範例可直接複製。</p>
+  <div class="modes">
+    <div class="mode">
+      <div class="ic">🔗</div>
+      <h3>貼連結</h3>
+      <p>YouTube／Bilibili 影片、Playlist、b23.tv 短連結，甚至 App「分享整串文字」都可以。</p>
+      <code class="ex" data-cmd="/play https://www.youtube.com/watch?v=...">/play <span class="tag">&lt;貼上連結&gt;</span></code>
+    </div>
+    <div class="mode">
+      <div class="ic">🔍</div>
+      <h3>關鍵字（YouTube）</h3>
+      <p>直接打歌名，搜 YouTube，跳出選單讓你挑想要的那首。</p>
+      <code class="ex" data-cmd="/play 五月天 倔強">/play <span class="tag">五月天 倔強</span></code>
+    </div>
+    <div class="mode">
+      <div class="ic">🦎</div>
+      <h3>關鍵字（Bilibili）</h3>
+      <p>想搜 Bilibili？關鍵字前面加 <b style="color:var(--lime)">bili</b>（或 b站）即可。</p>
+      <code class="ex" data-cmd="/play bili 五月天 倔強">/play <span class="tag">bili</span> 五月天 倔強</code>
+    </div>
   </div>
+</div>
 
-  <div id="content"></div>
-  <div class="empty" id="empty">找不到符合的指令 🥲 換個關鍵字試試</div>
+<!-- ===== 搜尋 + 分類 ===== -->
+<div class="controls">
+  <input id="search" type="text" placeholder="🔍 搜尋指令或功能… 例如 跳歌、歌詞、KTV、bilibili、音量" autocomplete="off">
+  <div class="chips" id="chips"></div>
+</div>
 
-  <section data-cat="控制台">
-    <div class="sec-title"><span class="em">🎛️</span> Now Playing 控制台按鈕</div>
-    <div class="panel-ref">
-      <p style="color:var(--muted);font-size:.92rem">用 <code style="color:#9ec5ff">/nowplaying</code> 或 <code style="color:#9ec5ff">/setchannel</code> 叫出控制台，兩排按鈕直接操作：</p>
-      <div class="btn-row">
-        <div class="pbtn"><span class="ic">⏮</span><span class="lb">重播</span></div>
-        <div class="pbtn"><span class="ic">⏸</span><span class="lb">暫停/繼續</span></div>
-        <div class="pbtn"><span class="ic">⏭</span><span class="lb">跳過</span></div>
-        <div class="pbtn"><span class="ic">🔀</span><span class="lb">隨機</span></div>
-        <div class="pbtn"><span class="ic">⏹</span><span class="lb">停止</span></div>
-      </div>
-      <div class="btn-row">
-        <div class="pbtn"><span class="ic">🔁</span><span class="lb">迴圈</span></div>
-        <div class="pbtn"><span class="ic">🎨</span><span class="lb">濾鏡</span></div>
-        <div class="pbtn"><span class="ic">📋</span><span class="lb">Queue</span></div>
-        <div class="pbtn"><span class="ic">🎤</span><span class="lb">KTV</span></div>
-        <div class="pbtn"><span class="ic">🔊</span><span class="lb">音量</span></div>
-      </div>
-      <div class="callout">
-        <b>誤觸防呆：</b>佇列中還有歌時按 <b>⏹ 停止</b> 會先跳出確認；歌曲若因串流異常秒結束會自動跳過、不會誤觸發評分。
-      </div>
+<div id="content"></div>
+<div class="empty" id="empty">🦎 找不到符合的指令，換個關鍵字試試</div>
+
+<!-- ===== 控制台 ===== -->
+<section data-static>
+  <div class="sec-title"><span class="em">🎛️</span> Now Playing 控制台按鈕</div>
+  <div class="panel-ref">
+    <p class="hint">用 <code>/nowplaying</code> 或 <code>/setchannel</code> 叫出控制台，兩排按鈕直接操作：</p>
+    <div class="btn-row">
+      <div class="pbtn"><span class="ic">⏮</span><span class="lb">重播</span></div>
+      <div class="pbtn"><span class="ic">⏸</span><span class="lb">暫停/繼續</span></div>
+      <div class="pbtn"><span class="ic">⏭</span><span class="lb">跳過</span></div>
+      <div class="pbtn"><span class="ic">🔀</span><span class="lb">隨機</span></div>
+      <div class="pbtn"><span class="ic">⏹</span><span class="lb">停止</span></div>
     </div>
-  </section>
-
-  <section data-cat="權限">
-    <div class="sec-title"><span class="em">🔒</span> 權限說明</div>
-    <div class="panel-ref">
-      <div class="legend">
-        <span><span class="dot" style="background:#3ba55d"></span><b style="color:#7fe3a3">所有人</b>（在語音頻道中）：播放、暫停、隨機、迴圈、投票跳歌</span>
-        <span><span class="dot" style="background:#faa61a"></span><b style="color:#ffce7a">點歌者本人</b>：直接跳過自己點的歌</span>
-        <span><span class="dot" style="background:#ed4245"></span><b style="color:#ff8a8c">DJ／管理員</b>：強制跳歌、停止、清空 Queue</span>
-      </div>
+    <div class="btn-row">
+      <div class="pbtn"><span class="ic">🔁</span><span class="lb">迴圈</span></div>
+      <div class="pbtn"><span class="ic">🎨</span><span class="lb">濾鏡</span></div>
+      <div class="pbtn"><span class="ic">📋</span><span class="lb">Queue</span></div>
+      <div class="pbtn"><span class="ic">🎤</span><span class="lb">KTV</span></div>
+      <div class="pbtn"><span class="ic">🔊</span><span class="lb">音量</span></div>
     </div>
-  </section>
+    <div class="callout">
+      <b>誤觸防呆：</b>佇列還有歌時按 <b>⏹ 停止</b> 會先確認；歌曲若因串流異常秒結束會自動跳過，不會誤觸發評分。
+    </div>
+  </div>
+</section>
 
-  <footer>
-    Now Playing 每 15 秒自動更新 · KTV 每 5 秒同步 · 歌曲結束後卡片轉灰<br>
-    🤖 Discord Music Bot · 點任一指令即可複製到剪貼簿
-  </footer>
+<!-- ===== 權限 ===== -->
+<section data-static>
+  <div class="sec-title"><span class="em">🔒</span> 權限說明</div>
+  <div class="panel-ref">
+    <div class="legend">
+      <span><span class="dot" style="background:var(--gecko)"></span><b style="color:var(--gecko)">所有人</b>（在語音頻道中）：播放、暫停、隨機、迴圈、投票跳歌</span>
+      <span><span class="dot" style="background:var(--amber)"></span><b style="color:var(--amber)">點歌者本人</b>：直接跳過自己點的歌</span>
+      <span><span class="dot" style="background:var(--coral)"></span><b style="color:var(--coral)">DJ／管理員</b>：強制跳歌、停止、清空 Queue</span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="gk">🦎🎧🎵</div>
+  Now Playing 每 15 秒自動更新 · KTV 每 5 秒同步 · 歌曲結束後卡片轉灰<br>
+  <b style="color:var(--gecko)">Gecko Groove</b> · Discord Music Bot · 點任一指令即可複製到剪貼簿
+</footer>
 </div>
 
 <div class="toast" id="toast">已複製 ✓</div>
@@ -156,14 +269,14 @@ const COMMANDS = [
     {cmd:"/leave", desc:"讓 Bot 離開語音頻道", perm:"all"},
   ]},
   {cat:"播放", em:"▶️", title:"播放控制", items:[
-    {cmd:"/play", args:"<連結 / 關鍵字> [message]", desc:"播放 YouTube／Bilibili 連結（含 b23.tv 短連結與 App 分享文字）、YouTube Playlist，或關鍵字搜尋。關鍵字預設搜 YouTube；加 bili 前綴搜 Bilibili，例如「bili 五月天 倔強」。", perm:"all", tags:"bilibili b站 youtube 播放 點歌 search b23"},
+    {cmd:"/play", args:"<連結 / 關鍵字>", desc:"播放歌曲（用法見上方「怎麼點歌」三種方式）。可加 message 顯示在卡片上。", perm:"all", tags:"bilibili b站 youtube 播放 點歌 search b23 連結"},
     {cmd:"/pause", desc:"暫停目前播放", perm:"all"},
     {cmd:"/resume", desc:"繼續播放", perm:"all"},
     {cmd:"/skip", desc:"跳過目前歌曲（DJ 或該歌點歌者）", perm:"self", tags:"跳歌"},
-    {cmd:"/stop", desc:"停止播放並清空整個 Queue（佇列有歌時會先確認）", perm:"dj"},
+    {cmd:"/stop", desc:"停止並清空整個 Queue（佇列有歌時會先確認）", perm:"dj"},
   ]},
   {cat:"佇列", em:"📋", title:"Queue 管理", items:[
-    {cmd:"/queue", desc:"開啟互動式 Queue 面板（分頁瀏覽 + 清空按鈕）", perm:"all"},
+    {cmd:"/queue", desc:"互動式 Queue 面板（分頁瀏覽＋清空按鈕）", perm:"all"},
     {cmd:"/shuffle", desc:"隨機打亂 Queue 順序", perm:"all"},
     {cmd:"/remove", args:"<編號>", desc:"從 Queue 移除指定位置的歌曲", perm:"all"},
     {cmd:"/move", args:"<從> <到>", desc:"調整 Queue 中歌曲的順序", perm:"all"},
@@ -171,100 +284,78 @@ const COMMANDS = [
     {cmd:"/voteskip", desc:"發起投票跳歌，過半數同意即跳過", perm:"all", tags:"投票"},
   ]},
   {cat:"控制台", em:"🎛️", title:"控制台", items:[
-    {cmd:"/nowplaying", desc:"顯示 Now Playing 控制台（兩排互動按鈕，每 15 秒更新）", perm:"all"},
-    {cmd:"/setchannel", desc:"把目前頻道設為專屬音樂控制台（永久面板）", perm:"dj"},
+    {cmd:"/nowplaying", desc:"顯示 Now Playing 控制台（每 15 秒更新）", perm:"all"},
+    {cmd:"/setchannel", desc:"把目前頻道設為專屬音樂控制台", perm:"dj"},
     {cmd:"/clearchannel", desc:"取消專屬音樂控制台設定", perm:"dj"},
   ]},
   {cat:"設定", em:"⚙️", title:"播放設定", items:[
-    {cmd:"/volume", args:"<1–200>", desc:"調整音量，100 = 原始音量（Bot 預設啟動為 20%）", perm:"all", tags:"音量"},
-    {cmd:"/loop", desc:"切換迴圈模式：關閉 → 單曲 → 整列循環", perm:"all", tags:"循環"},
-    {cmd:"/filter", desc:"套用音訊濾鏡（bass／nightcore／slow／8d），立即重播套用", perm:"all", tags:"濾鏡 音效"},
-    {cmd:"/autoradio", desc:"開關自動推薦：Queue 播完後自動接續相關歌曲", perm:"all", tags:"電台 推薦"},
-    {cmd:"/sfx", desc:"開關成員進出語音頻道的入場/離場音效", perm:"all", tags:"音效"},
+    {cmd:"/volume", args:"<1–200>", desc:"調整音量，100＝原始（預設啟動 20%）", perm:"all", tags:"音量"},
+    {cmd:"/loop", desc:"切換迴圈：關閉 → 單曲 → 整列循環", perm:"all", tags:"循環"},
+    {cmd:"/filter", desc:"音訊濾鏡（bass／nightcore／slow／8d）", perm:"all", tags:"濾鏡 音效"},
+    {cmd:"/autoradio", desc:"自動推薦：Queue 播完接續相關歌曲", perm:"all", tags:"電台 推薦"},
+    {cmd:"/sfx", desc:"開關成員進出語音的入場/離場音效", perm:"all", tags:"音效"},
   ]},
   {cat:"特殊", em:"✨", title:"特殊功能", items:[
-    {cmd:"/karaoke", desc:"開關 KTV 歌詞滾動模式，每 5 秒同步逐行歌詞", perm:"all", tags:"ktv 歌詞 卡拉ok"},
-    {cmd:"/lyrics", desc:"翻頁式歌詞閱讀器（資料來源 Genius）", perm:"all", tags:"歌詞"},
+    {cmd:"/karaoke", desc:"KTV 歌詞滾動，每 5 秒同步逐行歌詞", perm:"all", tags:"ktv 歌詞 卡拉ok"},
+    {cmd:"/lyrics", desc:"翻頁式歌詞閱讀器（Genius）", perm:"all", tags:"歌詞"},
     {cmd:"/songinfo", desc:"顯示目前歌曲的詳細資訊", perm:"all"},
   ]},
   {cat:"統計", em:"📊", title:"統計與回顧", items:[
-    {cmd:"/stats", desc:"伺服器播放統計排行榜（熱門歌曲、點歌王、評分最高）", perm:"all", tags:"排行"},
+    {cmd:"/stats", desc:"伺服器播放排行（熱門歌曲、點歌王、評分）", perm:"all", tags:"排行"},
     {cmd:"/mystats", desc:"查看自己的個人播放統計", perm:"all"},
     {cmd:"/history", desc:"查看最近 10 首播放記錄", perm:"all"},
     {cmd:"/yearwrap", args:"[年份]", desc:"伺服器年度音樂回顧", perm:"all", tags:"年度回顧"},
   ]},
   {cat:"收藏", em:"📚", title:"收藏清單", items:[
-    {cmd:"/playlist", args:"save|load|list|delete <名稱>", desc:"管理個人收藏清單：儲存目前 Queue、載入、列出、刪除", perm:"all", tags:"歌單"},
+    {cmd:"/playlist", args:"save|load|list|delete <名稱>", desc:"管理收藏清單：儲存目前 Queue、載入、列出、刪除", perm:"all", tags:"歌單"},
   ]},
   {cat:"其他", em:"🛠️", title:"系統", items:[
     {cmd:"/help", desc:"顯示所有指令說明", perm:"all"},
     {cmd:"/ping", desc:"Bot 狀態與 yt-dlp 診斷（管理員用）", perm:"dj", tags:"診斷"},
   ]},
 ];
-
-const PERM_LABEL = {all:"所有人", dj:"DJ", self:"點歌者"};
-const PERM_CLASS = {all:"p-all", dj:"p-dj", self:"p-self"};
-
-const content = document.getElementById('content');
-const chipsBox = document.getElementById('chips');
-const search = document.getElementById('search');
-const empty = document.getElementById('empty');
-let activeCat = "全部";
-
-// build category chips
-const cats = ["全部", ...COMMANDS.map(c=>c.cat)];
-cats.forEach(cat=>{
-  const chip = document.createElement('div');
-  chip.className = 'chip' + (cat==="全部"?' active':'');
-  chip.textContent = cat;
-  chip.onclick = ()=>{activeCat=cat; document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('active',c.textContent===cat)); render();};
+const PERM_LABEL={all:"所有人",dj:"DJ",self:"點歌者"};
+const PERM_CLASS={all:"p-all",dj:"p-dj",self:"p-self"};
+const content=document.getElementById('content'),chipsBox=document.getElementById('chips'),
+      search=document.getElementById('search'),empty=document.getElementById('empty');
+let activeCat="全部";
+["全部",...COMMANDS.map(c=>c.cat)].forEach(cat=>{
+  const chip=document.createElement('div');
+  chip.className='chip'+(cat==="全部"?' active':'');chip.textContent=cat;
+  chip.onclick=()=>{activeCat=cat;document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('active',c.textContent===cat));render();};
   chipsBox.appendChild(chip);
 });
-
 function render(){
-  const q = search.value.trim().toLowerCase();
-  content.innerHTML = '';
-  let total = 0;
+  const q=search.value.trim().toLowerCase();content.innerHTML='';let total=0;
   COMMANDS.forEach(group=>{
-    if(activeCat!=="全部" && group.cat!==activeCat) return;
-    const matches = group.items.filter(it=>{
-      if(!q) return true;
-      const hay = (it.cmd+' '+(it.args||'')+' '+it.desc+' '+(it.tags||'')).toLowerCase();
-      return hay.includes(q);
+    if(activeCat!=="全部"&&group.cat!==activeCat)return;
+    const matches=group.items.filter(it=>{
+      if(!q)return true;
+      return (it.cmd+' '+(it.args||'')+' '+it.desc+' '+(it.tags||'')).toLowerCase().includes(q);
     });
-    if(!matches.length) return;
-    total += matches.length;
-    const sec = document.createElement('section');
-    sec.innerHTML = `<div class="sec-title"><span class="em">${group.em}</span> ${group.title}</div>`;
-    const grid = document.createElement('div'); grid.className='grid';
+    if(!matches.length)return;total+=matches.length;
+    const sec=document.createElement('section');
+    sec.innerHTML=`<div class="sec-title"><span class="em">${group.em}</span> ${group.title}</div>`;
+    const grid=document.createElement('div');grid.className='grid';
     matches.forEach(it=>{
-      const card = document.createElement('div'); card.className='card';
-      card.innerHTML = `
-        <span class="perm ${PERM_CLASS[it.perm]}">${PERM_LABEL[it.perm]}</span>
+      const card=document.createElement('div');card.className='card';
+      card.innerHTML=`<span class="perm ${PERM_CLASS[it.perm]}">${PERM_LABEL[it.perm]}</span>
         <span class="cmd" data-cmd="${it.cmd}">${it.cmd}<span class="copy">⧉ 複製</span></span>
-        ${it.args?`<div class="args">${it.args}</div>`:''}
-        <div class="desc">${it.desc}</div>`;
+        ${it.args?`<div class="args">${it.args}</div>`:''}<div class="desc">${it.desc}</div>`;
       grid.appendChild(card);
     });
-    sec.appendChild(grid);
-    content.appendChild(sec);
+    sec.appendChild(grid);content.appendChild(sec);
   });
-  empty.style.display = total? 'none':'block';
+  empty.style.display=total?'none':'block';
 }
-
-// copy on click
-content.addEventListener('click', e=>{
-  const el = e.target.closest('.cmd');
-  if(!el) return;
-  const txt = el.getAttribute('data-cmd');
-  navigator.clipboard?.writeText(txt).then(showToast).catch(()=>{});
+// copy on click (cards + hero examples)
+document.body.addEventListener('click',e=>{
+  const el=e.target.closest('[data-cmd]');if(!el)return;
+  navigator.clipboard?.writeText(el.getAttribute('data-cmd')).then(showToast).catch(()=>{});
 });
-const toast = document.getElementById('toast');
-let toastTimer;
-function showToast(){toast.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>toast.classList.remove('show'),1400);}
-
-search.addEventListener('input', render);
-render();
+const toast=document.getElementById('toast');let tt;
+function showToast(){toast.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>toast.classList.remove('show'),1400);}
+search.addEventListener('input',render);render();
 </script>
 </body>
 </html>

@@ -7,7 +7,13 @@ from config import COOKIES_FILE, MAX_PLAYLIST_SONGS
 from models.song import Song
 from utils.logger import logger
 
-FFMPEG_BEFORE_OPTIONS = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+# -hide_banner/-loglevel error silence FFmpeg's banner and the benign
+# "Will reconnect / Input-output error" chatter it prints when playback is
+# stopped or skipped mid-stream (we detect real failures in Python instead).
+FFMPEG_BEFORE_OPTIONS = (
+    "-hide_banner -loglevel error "
+    "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+)
 FFMPEG_BASE_OPTIONS = "-vn"
 
 # yt-dlp hangs indefinitely if network calls stall.
