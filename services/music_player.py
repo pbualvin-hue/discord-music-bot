@@ -16,6 +16,7 @@ from services.filter_service import build_ffmpeg_options
 from services.stats_service import record_play
 from services.youtube_service import (
     FFMPEG_BEFORE_OPTIONS,
+    FFMPEG_LIVE_BEFORE_OPTIONS,
     get_stream_url,
     search_song,
 )
@@ -235,6 +236,42 @@ class MusicPlayer:
         state = self.get_state(guild_id)
         ended_song = state.current_song
 
+        # Live auto-recovery: a live stream that dropped on its own (not skipped /
+        # stopped — those null current_song) should reconnect & restart rather than
+        # advance. Runs before the lifecycle hooks so a brief drop doesn't churn the
+        # panel. Bounded: 3 restarts within 60s of each other = treat as dead.
+        if (
+            ended_song is not None
+            and ended_song.is_live
+            and not state.seeking
+            and state.voice_client
+            and state.voice_client.is_connected()
+        ):
+            now = time.time()
+            if now - state.last_live_restart > 60:
+                state.live_restarts = 0
+            if state.live_restarts < 3:
+                state.live_restarts += 1
+                state.last_live_restart = now
+                logger.info(
+                    "[Guild %s] Live '%s' dropped — reconnecting (restart #%d)",
+                    guild_id, ended_song.title, state.live_restarts,
+                )
+                url = await get_stream_url(ended_song)
+                if url:
+                    state.current_stream_url = url
+                    if await self._play_from(guild_id, ended_song, url, 0.0):
+                        return
+            else:
+                logger.warning("[Guild %s] Live '%s' kept dropping — giving up.", guild_id, ended_song.title)
+                if state.last_text_channel:
+                    try:
+                        await state.last_text_channel.send(
+                            f"🔴 直播 **{ended_song.title[:40]}** 連線多次中斷，已停止。"
+                        )
+                    except Exception:
+                        pass
+
         # Track last played song for F3 /replay
         if ended_song is not None:
             state.last_played_song = ended_song
@@ -277,6 +314,7 @@ class MusicPlayer:
 
         song = state.queue.pop(0)
         state.current_song = song
+        state.live_restarts = 0   # fresh song — reset live recovery counter
 
         # Use prefetched URL if it's for this exact song, else fetch now
         if state.prefetch_song is song and state.prefetch_url:
@@ -341,10 +379,13 @@ class MusicPlayer:
 
         start_at = self._adjust_for_sponsor(state, start_at)
         ffmpeg_opts = build_ffmpeg_options(state.audio_filter)
-        before_opts = FFMPEG_BEFORE_OPTIONS
         if song.source == "bilibili":
             from services.bilibili_service import BILI_FFMPEG_HEADERS
             before_opts = f'-headers "{BILI_FFMPEG_HEADERS}" {FFMPEG_BEFORE_OPTIONS}'
+        elif song.is_live:
+            before_opts = FFMPEG_LIVE_BEFORE_OPTIONS  # reconnect at EOF for HLS
+        else:
+            before_opts = FFMPEG_BEFORE_OPTIONS
         if start_at > 0:
             before_opts = f"-ss {start_at:.2f} {before_opts}"
         try:

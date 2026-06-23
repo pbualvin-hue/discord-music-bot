@@ -67,6 +67,10 @@ class GuildState:
     seeking: bool = False
     seek_target: float = 0.0
 
+    # Live auto-recovery: re-resolve & restart a dropped live stream (bounded)
+    live_restarts: int = 0
+    last_live_restart: float = 0.0
+
     # SponsorBlock: skip non-music / sponsor segments of the current song
     sponsorblock_enabled: bool = False
     sponsor_segments: list = field(default_factory=list)   # [(start, end)] seconds

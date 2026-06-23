@@ -14,6 +14,14 @@ FFMPEG_BEFORE_OPTIONS = (
     "-hide_banner -loglevel error "
     "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
 )
+# Live/HLS streams (Twitch, YouTube live, radio) hit transient EOF as their
+# segment window rolls; -reconnect_at_eof makes FFmpeg reconnect instead of
+# silently stalling (green ring on, no audio). Must NOT be used for normal
+# songs or they'd reconnect at the end instead of finishing.
+FFMPEG_LIVE_BEFORE_OPTIONS = (
+    "-hide_banner -loglevel error "
+    "-reconnect 1 -reconnect_streamed 1 -reconnect_at_eof 1 -reconnect_delay_max 5"
+)
 FFMPEG_BASE_OPTIONS = "-vn"
 
 # yt-dlp hangs indefinitely if network calls stall.
