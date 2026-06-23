@@ -180,6 +180,17 @@ def _build_nowplaying_embed(
         stars = "⭐" * round(rating["avg"]) + f" {rating['avg']}"
         embed.add_field(name="評分", value=f"{stars}（{rating['votes']} 票）", inline=True)
 
+    # Next-up preview (data already in the queue / prefetch)
+    if not ended and state.queue:
+        nxt = state.queue[0]
+        prefetched = " ⚡" if state.prefetch_song is nxt and state.prefetch_url else ""
+        more = f"（還有 {len(state.queue) - 1} 首）" if len(state.queue) > 1 else ""
+        embed.add_field(
+            name="⏭️ 下一首",
+            value=f"{nxt.source_emoji} {nxt.title[:55]} `[{nxt.duration_str}]`{prefetched}　{more}",
+            inline=False,
+        )
+
     # J1: large thumbnail at bottom
     if song.thumbnail:
         embed.set_image(url=song.thumbnail)
@@ -1466,9 +1477,9 @@ class MusicCog(commands.Cog, name="Music"):
         embed.add_field(
             name="🎛️ Now Playing 控制台", inline=False,
             value=(
-                "`/nowplaying` — 顯示控制台（2 排按鈕）\n"
+                "`/nowplaying` — 顯示控制台（3 排按鈕，切歌時自動彈出）\n"
                 "`/setchannel` — 設定永久控制台頻道  `/clearchannel`\n"
-                "控制台按鈕：⏮⏸⏭🔀⏹ / 🔁🎨📋🎤🔊（含音量 Modal）"
+                "控制台：⏮⏸⏭🔀⏹ / 🔁🎨📋🎤🔊 / ⏪⏩🛡️♾️（seek・SponsorBlock・24/7）"
             ),
         )
         embed.add_field(

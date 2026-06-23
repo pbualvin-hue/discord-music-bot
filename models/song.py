@@ -13,6 +13,8 @@ class Song:
 
     @property
     def duration_str(self) -> str:
+        if self.is_live:
+            return "🔴 LIVE"
         if not self.duration:
             return "??:??"
         minutes, seconds = divmod(self.duration, 60)
@@ -20,3 +22,18 @@ class Song:
         if hours:
             return f"{hours}:{minutes:02d}:{seconds:02d}"
         return f"{minutes}:{seconds:02d}"
+
+    @property
+    def source_emoji(self) -> str:
+        """Icon for the song's platform, shown in queue / now-playing."""
+        if self.source == "radio":
+            return "📻"
+        if self.is_live:
+            return "🔴"
+        return {
+            "youtube": "▶️",
+            "bilibili": "📺",
+            "soundcloud": "☁️",
+            "spotify": "🎧",
+            "twitch": "🟣",
+        }.get(self.source, "▶️")

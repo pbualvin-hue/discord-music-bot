@@ -59,12 +59,16 @@ class QueuePanelView(discord.ui.View):
             elapsed = self.player.get_progress(self.guild_id)
             paused = self.player.is_paused(self.guild_id)
             icon = "⏸" if paused else "▶️"
+            progress_line = (
+                "🔴 直播中 LIVE"
+                if s.is_live
+                else f"`[{_bar(elapsed, float(s.duration))}]`\n`{_fmt(elapsed)} / {s.duration_str}`"
+            )
             embed.add_field(
                 name=f"{icon} 正在播放",
                 value=(
-                    f"**{s.title}**\n"
-                    f"`[{_bar(elapsed, float(s.duration))}]`\n"
-                    f"`{_fmt(elapsed)} / {s.duration_str}`　👤 {s.requester}"
+                    f"{s.source_emoji} **{s.title}**\n"
+                    f"{progress_line}　👤 {s.requester}"
                 ),
                 inline=False,
             )
@@ -84,7 +88,7 @@ class QueuePanelView(discord.ui.View):
             lines = []
             for i, s in enumerate(queue[start:end], start + 1):
                 lines.append(
-                    f"`{i}.` **{s.title[:42]}**\n"
+                    f"`{i}.` {s.source_emoji} **{s.title[:40]}**\n"
                     f"　　⏱ {s.duration_str}　👤 {s.requester}　⏳ ~{_fmt(wait_before_page)}"
                 )
                 wait_before_page += s.duration

@@ -336,32 +336,44 @@ async def get_stream_url(song: Song) -> Optional[str]:
         return song.url
 
     loop = asyncio.get_running_loop()
+    is_yt = _is_youtube(song.url)
     # YouTube live needs the 'web' client; everything else uses the default opts.
-    stream_opts = (
-        _live_opts(_YDL_STREAM)
-        if song.is_live and _is_youtube(song.url)
-        else _build_opts(_YDL_STREAM)
-    )
+    stream_opts = _live_opts(_YDL_STREAM) if (song.is_live and is_yt) else _build_opts(_YDL_STREAM)
+
+    def _extract(opts: dict) -> Optional[dict]:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(song.url, download=False)
+        if info is None:
+            return None
+        if "entries" in info:
+            entries = [e for e in info["entries"] if e]
+            if not entries:
+                return None
+            info = entries[0]
+        return info
 
     def _run() -> Optional[str]:
-        with yt_dlp.YoutubeDL(stream_opts) as ydl:
-            try:
-                info = ydl.extract_info(song.url, download=False)
-            except yt_dlp.utils.DownloadError as exc:
-                err = str(exc)
-                if "429" in err or "Too Many Requests" in err:
-                    logger.error("串流取得被限流 (429)，請設定 COOKIES_FILE：%s", exc)
-                else:
-                    logger.error("串流 URL 取得失敗 '%s'：%s", song.title, exc)
-                return None
-            if info is None:
-                return None
-            if "entries" in info:
-                entries = [e for e in info["entries"] if e]
-                if not entries:
+        try:
+            info = _extract(stream_opts)
+        except yt_dlp.utils.DownloadError as exc:
+            err = str(exc)
+            # The 'tv' client returns no formats for live streams (and occasionally
+            # other videos) — retry with the 'web' client before giving up.
+            if is_yt and not (song.is_live) and "No video formats" in err:
+                try:
+                    info = _extract(_live_opts(_YDL_STREAM))
+                except Exception as exc2:
+                    logger.error("串流 URL 取得失敗 '%s'：%s", song.title, exc2)
                     return None
-                info = entries[0]
-            return info.get("url")
+            elif "429" in err or "Too Many Requests" in err:
+                logger.error("串流取得被限流 (429)，請設定 COOKIES_FILE：%s", exc)
+                return None
+            else:
+                logger.error("串流 URL 取得失敗 '%s'：%s", song.title, exc)
+                return None
+        if info is None:
+            return None
+        return info.get("url")
 
     try:
         async with _EXTRACT_SEM:

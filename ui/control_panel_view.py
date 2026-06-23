@@ -256,6 +256,52 @@ class ControlPanelView(discord.ui.View):
         modal = VolumeModal(self.player, self.guild_id)
         await interaction.response.send_modal(modal)
 
+    # ── Row 2 ──────────────────────────────────────────────────────────
+
+    async def _seek_relative(self, interaction: discord.Interaction, delta: int) -> None:
+        if not await check_voice(interaction, self._vc()):
+            return
+        state = self.player.get_state(self.guild_id)
+        song = state.current_song
+        if not song or song.is_live or not song.duration:
+            await interaction.response.send_message("❌ 直播/無時長歌曲無法跳轉。", ephemeral=True)
+            return
+        target = self.player.get_progress(self.guild_id) + delta
+        await interaction.response.defer()
+        result = await self.player.seek(self.guild_id, target)
+        if result is None:
+            await interaction.followup.send("❌ 無法跳轉。", ephemeral=True)
+        else:
+            arrow = "⏪" if delta < 0 else "⏩"
+            await interaction.followup.send(f"{arrow} {result // 60}:{result % 60:02d}", ephemeral=True)
+
+    @discord.ui.button(emoji="⏪", label="-15s", style=discord.ButtonStyle.secondary, row=2)
+    async def btn_rewind(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await self._seek_relative(interaction, -15)
+
+    @discord.ui.button(emoji="⏩", label="+15s", style=discord.ButtonStyle.secondary, row=2)
+    async def btn_forward(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await self._seek_relative(interaction, 15)
+
+    @discord.ui.button(emoji="🛡️", label="SponsorBlock", style=discord.ButtonStyle.secondary, row=2)
+    async def btn_sponsorblock(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        if not await check_voice(interaction, self._vc()):
+            return
+        on = self.player.set_sponsorblock(self.guild_id)
+        msg = (
+            "🛡️ SponsorBlock 已開啟 — 自動跳過非音樂/業配段（下一首生效）"
+            if on else "🛡️ SponsorBlock 已關閉"
+        )
+        await interaction.response.send_message(msg, ephemeral=True)
+
+    @discord.ui.button(emoji="♾️", label="24/7", style=discord.ButtonStyle.secondary, row=2)
+    async def btn_247(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        if not await check_voice(interaction, self._vc()):
+            return
+        on = self.player.set_stay_247(self.guild_id)
+        msg = "♾️ 24/7 已開啟 — 沒人也不離開" if on else "⏏️ 24/7 已關閉"
+        await interaction.response.send_message(msg, ephemeral=True)
+
 
 class _StopConfirmView(discord.ui.View):
     """Ephemeral confirmation shown when /stop is pressed with a non-empty queue."""
