@@ -1,4 +1,7 @@
 import asyncio
+import glob
+import os
+import tempfile
 from typing import Optional
 
 import yt_dlp
@@ -6,6 +9,14 @@ import yt_dlp
 from config import COOKIES_FILE, MAX_PLAYLIST_SONGS, YT_PROXY
 from models.song import Song
 from utils.logger import logger
+
+# Download cache (Option A): when streaming through a residential proxy (YT_PROXY),
+# the extra network hop causes mid-song stutter. Instead, download the audio to
+# disk first and play from the local file — no network during playback.
+_DL_DIR = os.path.join(tempfile.gettempdir(), "discord-music-bot-cache")
+os.makedirs(_DL_DIR, exist_ok=True)
+# Full download over the tunnel takes longer than a metadata fetch.
+_DL_TIMEOUT = 120.0
 
 # -hide_banner/-loglevel error silence FFmpeg's banner and the benign
 # "Will reconnect / Input-output error" chatter it prints when playback is
@@ -393,6 +404,91 @@ async def get_stream_url(song: Song) -> Optional[str]:
     except asyncio.TimeoutError:
         logger.error("get_stream_url timed out after %ss for: %s", _YDL_TIMEOUT, song.title)
         return None
+
+
+# ── Download-to-disk (Option A: smooth playback through a proxy) ──────────
+
+def _download_target(song: Song) -> str:
+    """The yt-dlp input used to download *song*'s audio."""
+    if song.source == "spotify":
+        # Spotify is DRM — match it to a YouTube result by "artist - track".
+        return f"ytsearch1:{song.title}"
+    return song.url
+
+
+def is_cached_file(path: Optional[str]) -> bool:
+    """True if *path* is one of our downloaded cache files (not a stream URL)."""
+    return bool(path) and os.path.isabs(path) and path.startswith(_DL_DIR)
+
+
+def cleanup_download(path: Optional[str]) -> None:
+    """Delete a downloaded cache file. No-op for stream URLs / missing files."""
+    if is_cached_file(path) and os.path.exists(path):
+        try:
+            os.remove(path)
+        except OSError as exc:
+            logger.debug("Cache cleanup failed for %s: %s", path, exc)
+
+
+def clear_download_cache() -> None:
+    """Wipe the whole cache dir — call on startup to clear orphans from crashes."""
+    for f in glob.glob(os.path.join(_DL_DIR, "*")):
+        try:
+            os.remove(f)
+        except OSError:
+            pass
+
+
+async def _download_audio(song: Song) -> Optional[str]:
+    """Download *song*'s audio to the cache dir and return the local file path."""
+    loop = asyncio.get_running_loop()
+    target = _download_target(song)
+    opts = _build_opts(_YDL_STREAM)
+    opts = {**opts, "outtmpl": os.path.join(_DL_DIR, "%(id)s.%(ext)s")}
+
+    def _run() -> Optional[str]:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(target, download=True)
+            if info is None:
+                return None
+            if "entries" in info:
+                entries = [e for e in info["entries"] if e]
+                if not entries:
+                    return None
+                info = entries[0]
+            path = ydl.prepare_filename(info)
+        if os.path.exists(path):
+            return path
+        # Fallback: extension may differ from the template — match by video id.
+        matches = glob.glob(os.path.join(_DL_DIR, f"{info.get('id', '')}.*"))
+        return matches[0] if matches else None
+
+    try:
+        async with _EXTRACT_SEM:
+            return await asyncio.wait_for(
+                loop.run_in_executor(None, _run), timeout=_DL_TIMEOUT
+            )
+    except asyncio.TimeoutError:
+        logger.error("Download timed out after %ss for: %s", _DL_TIMEOUT, song.title)
+        return None
+    except Exception as exc:
+        logger.error("Download failed for '%s': %s", song.title, exc)
+        return None
+
+
+async def get_playable_source(song: Song) -> Optional[str]:
+    """Return a playable source for *song*: a local file path (download mode —
+    used when YT_PROXY is set and the song would otherwise stream through the
+    proxy and stutter) or a direct stream URL (everything else).
+
+    Falls back to streaming if the download fails."""
+    if YT_PROXY and not song.is_live and song.source in ("youtube", "spotify"):
+        path = await _download_audio(song)
+        if path:
+            logger.info("Downloaded '%s' for gapless local playback", song.title)
+            return path
+        logger.warning("Download failed for '%s' — falling back to streaming", song.title)
+    return await get_stream_url(song)
 
 
 def is_url(text: str) -> bool:

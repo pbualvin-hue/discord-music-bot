@@ -17,6 +17,8 @@ from services.stats_service import record_play
 from services.youtube_service import (
     FFMPEG_BEFORE_OPTIONS,
     FFMPEG_LIVE_BEFORE_OPTIONS,
+    cleanup_download,
+    get_playable_source,
     get_stream_url,
     search_song,
 )
@@ -48,6 +50,12 @@ class MusicPlayer:
             self._states[guild_id] = GuildState()
         return self._states[guild_id]
 
+    def _clear_prefetch(self, state: GuildState) -> None:
+        """Invalidate the prefetched source, deleting its cache file if any."""
+        cleanup_download(state.prefetch_url)
+        state.prefetch_url = None
+        state.prefetch_song = None
+
     # ── Queue ──────────────────────────────────────────────────────────
 
     def add_to_queue(self, guild_id: int, song: Song) -> bool:
@@ -72,8 +80,7 @@ class MusicPlayer:
         if not state.queue:
             return False
         random.shuffle(state.queue)
-        state.prefetch_url = None  # queue order changed
-        state.prefetch_song = None
+        self._clear_prefetch(state)  # queue order changed
         logger.info("[Guild %s] Queue shuffled.", guild_id)
         return True
 
@@ -83,8 +90,7 @@ class MusicPlayer:
         if len(state.queue) >= MAX_QUEUE_SIZE:
             return False
         state.queue.insert(0, song)
-        state.prefetch_url = None  # front of queue changed
-        state.prefetch_song = None
+        self._clear_prefetch(state)  # front of queue changed
         return True
 
     def clear_queue(self, guild_id: int) -> int:
@@ -92,8 +98,7 @@ class MusicPlayer:
         state = self.get_state(guild_id)
         n = len(state.queue)
         state.queue.clear()
-        state.prefetch_url = None
-        state.prefetch_song = None
+        self._clear_prefetch(state)
         logger.info("[Guild %s] Queue cleared (%d removed).", guild_id, n)
         return n
 
@@ -110,8 +115,7 @@ class MusicPlayer:
         removed = len(state.queue) - len(kept)
         if removed:
             state.queue = kept
-            state.prefetch_url = None
-            state.prefetch_song = None
+            self._clear_prefetch(state)
         return removed
 
     def skip_to(self, guild_id: int, position: int) -> Optional[Song]:
@@ -122,8 +126,7 @@ class MusicPlayer:
             return None
         target = state.queue[position - 1]
         del state.queue[: position - 1]
-        state.prefetch_url = None
-        state.prefetch_song = None
+        self._clear_prefetch(state)
         self.skip(guild_id)
         return target
 
@@ -224,6 +227,8 @@ class MusicPlayer:
         if _skip_count >= 3:
             logger.error("[Guild %s] 3 consecutive stream failures — stopping.", guild_id)
             state = self.get_state(guild_id)
+            cleanup_download(state.current_stream_url)
+            state.current_stream_url = None
             state.current_song = None
             if state.last_text_channel:
                 try:
@@ -304,11 +309,15 @@ class MusicPlayer:
                 state.queue.append(related)
 
         if not state.queue:
+            cleanup_download(state.current_stream_url)
+            state.current_stream_url = None
             state.current_song = None
             logger.info("[Guild %s] Queue exhausted.", guild_id)
             return
 
         if state.voice_client is None or not state.voice_client.is_connected():
+            cleanup_download(state.current_stream_url)
+            state.current_stream_url = None
             state.current_song = None
             return
 
@@ -316,22 +325,28 @@ class MusicPlayer:
         state.current_song = song
         state.live_restarts = 0   # fresh song — reset live recovery counter
 
-        # Use prefetched URL if it's for this exact song, else fetch now
+        # Use prefetched source if it's for this exact song, else fetch now
         if state.prefetch_song is song and state.prefetch_url:
             stream_url = state.prefetch_url
-            logger.info("[Guild %s] Using prefetched stream for '%s'", guild_id, song.title)
+            state.prefetch_url = None      # now the current source — don't delete
+            state.prefetch_song = None
+            logger.info("[Guild %s] Using prefetched source for '%s'", guild_id, song.title)
         else:
-            stream_url = await get_stream_url(song)
-        state.prefetch_url = None
-        state.prefetch_song = None
+            self._clear_prefetch(state)    # stale prefetch for a different song
+            stream_url = await get_playable_source(song)
 
         if not stream_url:
-            logger.error("[Guild %s] No stream URL for '%s', skipping.", guild_id, song.title)
+            logger.error("[Guild %s] No source for '%s', skipping.", guild_id, song.title)
             state.current_song = None
             await self.play_next(guild_id, _skip_count + 1)
             return
 
+        # Switch the current source, deleting the previous song's cache file.
+        # Guard the != check so a looped song (same path) isn't deleted.
+        old_source = state.current_stream_url
         state.current_stream_url = stream_url
+        if old_source != stream_url:
+            cleanup_download(old_source)
 
         # SponsorBlock: look up segments to skip (YouTube, non-live only)
         state.sponsor_segments = []
@@ -514,12 +529,16 @@ class MusicPlayer:
     async def _prefetch_next(self, guild_id: int, next_song: Song) -> None:
         state = self.get_state(guild_id)
         try:
-            url = await get_stream_url(next_song)
+            source = await get_playable_source(next_song)
             # Only store if the queue still has this song at front (not shuffled/removed)
-            if state.queue and state.queue[0] is next_song and url:
-                state.prefetch_url = url
+            if state.queue and state.queue[0] is next_song and source:
+                if state.prefetch_url and state.prefetch_url != source:
+                    cleanup_download(state.prefetch_url)
+                state.prefetch_url = source
                 state.prefetch_song = next_song
-                logger.info("[Guild %s] Prefetched stream for '%s'", guild_id, next_song.title)
+                logger.info("[Guild %s] Prefetched source for '%s'", guild_id, next_song.title)
+            elif source:
+                cleanup_download(source)  # queue changed mid-download — orphan
         except Exception as exc:
             logger.debug("[Guild %s] Prefetch failed for '%s': %s", guild_id, next_song.title, exc)
 
@@ -527,12 +546,13 @@ class MusicPlayer:
         state = self.get_state(guild_id)
         if state.voice_client and (state.voice_client.is_playing() or state.voice_client.is_paused()):
             state.current_song = None   # bypass loop re-insertion
-            state.prefetch_url = None   # prefetch is for the old queue order
-            state.prefetch_song = None
+            self._clear_prefetch(state)  # prefetch is for the old queue order
             state.seeking = False       # this stop() is a real skip, not a seek
+            old_source = state.current_stream_url
             state.current_stream_url = None
             self._cancel_sponsor_watch(guild_id)
             state.voice_client.stop()
+            cleanup_download(old_source)
             logger.info("[Guild %s] Skipped.", guild_id)
             return True
         return False
@@ -559,19 +579,20 @@ class MusicPlayer:
         state = self.get_state(guild_id)
         state.queue.clear()
         state.current_song = None
-        state.prefetch_url = None
-        state.prefetch_song = None
+        self._clear_prefetch(state)
         state.play_start_time = None
         state.paused_at = None
         state.total_paused = 0.0
         state.play_message = ""
         state.seeking = False
+        old_source = state.current_stream_url
         state.current_stream_url = None
         state.sponsor_segments = []
         self._cancel_sponsor_watch(guild_id)
         self._cancel_idle_timer(guild_id)
         if state.voice_client and (state.voice_client.is_playing() or state.voice_client.is_paused()):
             state.voice_client.stop()
+        cleanup_download(old_source)
         logger.info("[Guild %s] Stopped.", guild_id)
 
     # ── Auto-disconnect ─────────────────────────────────────────────────

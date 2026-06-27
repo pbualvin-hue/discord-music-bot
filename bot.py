@@ -38,6 +38,8 @@ class MusicBot(commands.Bot):
     async def on_ready(self) -> None:
         import yt_dlp as _ytdlp
         from config import COOKIES_FILE, YT_PROXY
+        from services.youtube_service import clear_download_cache
+        clear_download_cache()  # clear orphaned cache files from a previous crash
         logger.info("yt-dlp version: %s", _ytdlp.version.__version__)
         logger.info("Cookies: %s", COOKIES_FILE or "(none)")
         logger.info("YouTube proxy: %s", YT_PROXY or "(none)")
