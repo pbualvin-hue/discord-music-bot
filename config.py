@@ -31,6 +31,14 @@ DEFAULT_VOLUME: float = float(os.getenv("DEFAULT_VOLUME", "0.2"))
 # Leave empty to skip cookie authentication.
 COOKIES_FILE: str = os.getenv("COOKIES_FILE", "")
 
+# Optional HTTP proxy for YouTube traffic only (yt-dlp extraction + ffmpeg
+# streaming). Used to route YouTube requests through a residential IP (e.g. a
+# home NAS over a reverse SSH tunnel) so a datacenter host stops hitting the
+# "Sign in to confirm you're not a bot" / 403 checks. Format: http://host:port
+# Both yt-dlp AND ffmpeg must use it — otherwise the googlevideo URL (issued for
+# the proxy's IP) gets fetched from the host IP and 403s. Leave empty to disable.
+YT_PROXY: str = os.getenv("YT_PROXY", "")
+
 # Genius API token for lyrics lookup.
 # Get a free token at https://genius.com/developers → New API Client → Client Access Token
 GENIUS_API_KEY: str = os.getenv("GENIUS_API_KEY", "")

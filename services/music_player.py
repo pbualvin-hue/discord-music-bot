@@ -8,7 +8,7 @@ from typing import Awaitable, Callable, Optional
 
 import discord
 
-from config import AUTO_DISCONNECT_SECONDS, FFMPEG_PATH, MAX_QUEUE_SIZE
+from config import AUTO_DISCONNECT_SECONDS, FFMPEG_PATH, MAX_QUEUE_SIZE, YT_PROXY
 from models.guild_state import GuildState
 from models.loop_mode import LoopMode
 from models.song import Song
@@ -388,6 +388,10 @@ class MusicPlayer:
             before_opts = FFMPEG_BEFORE_OPTIONS
         if start_at > 0:
             before_opts = f"-ss {start_at:.2f} {before_opts}"
+        # Route the googlevideo fetch through the same proxy yt-dlp used, so the
+        # IP that requested the URL matches the IP that streams it (else 403).
+        if YT_PROXY and "googlevideo.com" in stream_url:
+            before_opts = f'-http_proxy "{YT_PROXY}" {before_opts}'
         try:
             raw = discord.FFmpegPCMAudio(
                 stream_url, before_options=before_opts, options=ffmpeg_opts, executable=FFMPEG_PATH

@@ -88,10 +88,12 @@ sudo journalctl --vacuum-time=30d
 
 ### Cookie 更新（若有設定）
 
-YouTube Cookie 的有效期通常為數週到數月。若出現 429 或「登入要求」錯誤：
+YouTube Cookie 的有效期通常為數週到數月。若出現 429 或「Sign in to confirm…」錯誤：
 
-1. 在瀏覽器重新登入 YouTube
-2. 用擴充套件重新匯出 `cookies.txt`
+⚠️ **務必用「無痕視窗」匯出**，否則一般登入分頁的 cookie 會被 YouTube 持續輪替而失效（這是「換了 cookie 還是壞」的常見原因）：
+
+1. 開無痕視窗登入 YouTube（建議拋棄式帳號）
+2. 用擴充套件匯出 `cookies.txt`，**然後直接關掉無痕視窗，不要登出、不要再操作**
 3. 上傳到伺服器：
    ```bash
    # 在 WSL 本機執行
@@ -100,6 +102,12 @@ YouTube Cookie 的有效期通常為數週到數月。若出現 429 或「登入
      ubuntu@YOUR_SERVER_IP:~/discord-music-bot/cookies.txt
    ```
 4. 重啟 Bot：`sudo systemctl restart music-bot`
+
+### 機房 IP 被擋（Sign in to confirm…）
+
+Oracle 是機房 IP，YouTube 會週期性封鎖。cookie 只能治標。
+**根治**：把 YouTube 流量繞經住宅 IP（家裡 DS220j 反向代理）。
+完整設定見 [PROXY_SETUP.md](PROXY_SETUP.md)，設好後在 `.env` 加 `YT_PROXY=http://127.0.0.1:8888`。
 
 ---
 

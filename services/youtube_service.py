@@ -3,7 +3,7 @@ from typing import Optional
 
 import yt_dlp
 
-from config import COOKIES_FILE, MAX_PLAYLIST_SONGS
+from config import COOKIES_FILE, MAX_PLAYLIST_SONGS, YT_PROXY
 from models.song import Song
 from utils.logger import logger
 
@@ -96,6 +96,8 @@ def _build_opts(base: dict) -> dict:
     opts = dict(base)
     if COOKIES_FILE:
         opts["cookiefile"] = COOKIES_FILE
+    if YT_PROXY:
+        opts["proxy"] = YT_PROXY
     return opts
 
 

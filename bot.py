@@ -37,7 +37,10 @@ class MusicBot(commands.Bot):
 
     async def on_ready(self) -> None:
         import yt_dlp as _ytdlp
+        from config import COOKIES_FILE, YT_PROXY
         logger.info("yt-dlp version: %s", _ytdlp.version.__version__)
+        logger.info("Cookies: %s", COOKIES_FILE or "(none)")
+        logger.info("YouTube proxy: %s", YT_PROXY or "(none)")
         logger.info("Bot ready: %s (ID: %s)", self.user, self.user.id)
         await self.change_presence(
             activity=discord.Activity(
