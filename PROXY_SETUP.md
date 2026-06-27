@@ -89,13 +89,17 @@ cat /opt/etc/tunnel_key.pub
 不能拿 shell、不能亂 forward。在 Oracle 的 authorized_keys 裡這樣寫（公鑰本體
 接在後面）：
 ```
-restrict,port-forwarding,permitlisten="127.0.0.1:8888" ssh-ed25519 AAAA...（NAS 公鑰）... nas-tunnel
+command="echo tunnel-only;exit",restrict,port-forwarding,permitlisten="127.0.0.1:8888" ssh-ed25519 AAAA...（NAS 公鑰）... nas-tunnel
 ```
 - `restrict`：關掉 pty／agent／X11／所有 forward（最小權限）。
 - `port-forwarding`：把 forward 能力加回來（反向通道需要）。
 - `permitlisten="127.0.0.1:8888"`：限定只能監聽這個位址埠，別的都不准。
+- `command="echo tunnel-only;exit"`：強制指令——只有在對方「要求執行命令/shell」
+  時才會觸發並擋下；通道用 `-N`（不要求命令）所以正常運作不受影響。
+  這樣即使 key 外洩，對方連 `ssh ... 'rm -rf'` 這種遠端執行都被擋。
 
-這樣即使 NAS 上的 key 外洩，對方也只能開這條到 tinyproxy 的通道，拿不到 Oracle shell。
+這樣即使 NAS 上的 key 外洩，對方也只能開這條到 tinyproxy 的通道，拿不到
+Oracle shell、也不能跑任何命令。
 
 ### A-5. 反向通道（autossh）＋ 開機自動執行
 
