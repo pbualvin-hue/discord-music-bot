@@ -3,20 +3,22 @@
 # 從本機（WSL）將 Bot 檔案上傳至雲端伺服器並重啟
 # 用法：bash scripts/deploy.sh
 #
-# 首次使用前，修改下方兩個變數：
-#   SERVER_IP  — 你的伺服器公開 IP
-#   SSH_KEY    — 你的 SSH 私鑰路徑
+# 首次使用前：複製 scripts/deploy.env.example 成 scripts/deploy.env，
+# 填入你的 SERVER_IP 與 SSH_KEY（deploy.env 不會進 git）。
 
 set -e
 
-# ── 請修改這兩個變數 ──────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# ── 設定 ───────────────────────────────────────
+# 真實值放在 scripts/deploy.env（不入 git）；下方僅為 fallback 預設。
 SERVER_IP="YOUR_SERVER_IP"          # 例如：140.238.xx.xx
 SSH_KEY="$HOME/.ssh/oracle.key"     # SSH 私鑰路徑
+[ -f "$SCRIPT_DIR/scripts/deploy.env" ] && source "$SCRIPT_DIR/scripts/deploy.env"
 # ─────────────────────────────────────────────
 
 SERVER_USER="ubuntu"
 REMOTE_DIR="/home/ubuntu/discord-music-bot"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # 驗證設定
 if [ "$SERVER_IP" = "YOUR_SERVER_IP" ]; then
