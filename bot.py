@@ -1,7 +1,12 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 
-from config import DISCORD_TOKEN, GUILD_ID
+from config import (
+    DISCORD_TOKEN,
+    GUILD_ID,
+    YTDLP_CHECK_INTERVAL_HOURS,
+    YTDLP_NOTIFY_CHANNEL_ID,
+)
 from services.music_player import MusicPlayer
 from utils.logger import logger
 
@@ -18,11 +23,20 @@ class MusicBot(commands.Bot):
             help_command=None,
         )
         self.player = MusicPlayer()
+        self._ytdlp_notified_version: str | None = None
 
     async def setup_hook(self) -> None:
         from commands.music import setup
 
         await setup(self, self.player)
+
+        if YTDLP_NOTIFY_CHANNEL_ID:
+            self._ytdlp_update_check.change_interval(hours=YTDLP_CHECK_INTERVAL_HOURS)
+            self._ytdlp_update_check.start()
+            logger.info(
+                "yt-dlp update check enabled (channel %s, every %sh).",
+                YTDLP_NOTIFY_CHANNEL_ID, YTDLP_CHECK_INTERVAL_HOURS,
+            )
 
         if GUILD_ID:
             # Guild-specific sync is instant — recommended for private bots.
@@ -50,6 +64,37 @@ class MusicBot(commands.Bot):
                 name="/play",
             )
         )
+
+    @tasks.loop(hours=24)
+    async def _ytdlp_update_check(self) -> None:
+        """Notify the configured channel when a newer yt-dlp version is on PyPI."""
+        import yt_dlp as _ytdlp
+        from services.ytdlp_update_service import get_latest_ytdlp_version, is_newer
+
+        current = _ytdlp.version.__version__
+        latest = await get_latest_ytdlp_version()
+        if not latest or not is_newer(latest, current):
+            return
+        if self._ytdlp_notified_version == latest:
+            return  # already pinged for this version — don't repeat
+        channel = self.get_channel(YTDLP_NOTIFY_CHANNEL_ID)
+        if channel is None:
+            logger.warning("yt-dlp 通知頻道 %s 找不到。", YTDLP_NOTIFY_CHANNEL_ID)
+            return
+        try:
+            await channel.send(
+                f"🔄 **yt-dlp 有新版可用**：`{latest}`（目前 `{current}`）\n"
+                "請在伺服器執行 `bash ~/discord-music-bot/scripts/update.sh` 更新，"
+                "以免 YouTube 解析失敗或被限流。"
+            )
+            self._ytdlp_notified_version = latest
+            logger.info("Sent yt-dlp update notice: %s (current %s)", latest, current)
+        except Exception as exc:
+            logger.warning("yt-dlp 更新通知發送失敗：%s", exc)
+
+    @_ytdlp_update_check.before_loop
+    async def _before_ytdlp_update_check(self) -> None:
+        await self.wait_until_ready()
 
 
 def main() -> None:

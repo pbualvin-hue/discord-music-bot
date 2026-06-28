@@ -43,6 +43,16 @@ YT_PROXY: str = os.getenv("YT_PROXY", "")
 # Get a free token at https://genius.com/developers → New API Client → Client Access Token
 GENIUS_API_KEY: str = os.getenv("GENIUS_API_KEY", "")
 
+# Optional: Discord channel ID where the bot posts a reminder when a newer
+# yt-dlp version is available (so you remember to run update.sh). Leave empty
+# to disable the check entirely.
+_raw_ytdlp_ch = os.getenv("YTDLP_NOTIFY_CHANNEL_ID", "")
+YTDLP_NOTIFY_CHANNEL_ID: int | None = (
+    int(_raw_ytdlp_ch) if _raw_ytdlp_ch.strip() else None
+)
+# How often (hours) to check PyPI for a newer yt-dlp version.
+YTDLP_CHECK_INTERVAL_HOURS: int = int(os.getenv("YTDLP_CHECK_INTERVAL_HOURS", "24"))
+
 if not DISCORD_TOKEN:
     raise ValueError(
         "DISCORD_TOKEN is not set. "
