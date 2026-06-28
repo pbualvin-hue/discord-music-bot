@@ -1,0 +1,10 @@
+# Shell scripts run on Linux/WSL — must always check out with LF endings,
+# otherwise bash fails with "$'\r': command not found".
+*.sh text eol=lf
+
+# Files sourced by bash (deploy config) must also be LF.
+*.env text eol=lf
+*.env.example text eol=lf
+
+# Windows batch files stay CRLF.
+*.bat text eol=crlf
