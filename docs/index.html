@@ -253,6 +253,14 @@
   .c-mini:hover{transform:translateX(170px) rotate(22deg) scale(1.25)}
   .critter.poke{animation:poke .62s cubic-bezier(.3,1.7,.5,1) !important}
   @keyframes poke{0%{}38%{transform:translateY(-26px) scale(1.22) rotate(-6deg)}70%{transform:translateY(4px) scale(.96)}100%{}}
+  /* 雷射眼 */
+  .mascot .lasers{opacity:0;transition:opacity .12s;filter:drop-shadow(0 0 4px #ff2d2d) drop-shadow(0 0 9px #ff6a00)}
+  .mascot.fire .lasers,body.od .mascot .lasers{opacity:1;animation:laserflick .12s steps(2) infinite}
+  @keyframes laserflick{50%{opacity:.5}}
+  /* Konami 超載：吉祥物變身 rave 造型 */
+  body.od .mascot{animation:vibe .3s ease-in-out infinite !important;
+    filter:drop-shadow(0 0 30px #ff3df0) drop-shadow(0 0 14px #22d3ee) hue-rotate(55deg) saturate(1.6) !important}
+  body.od .eq i{animation-duration:.24s !important}
 </style>
 </head>
 <body>
@@ -338,6 +346,7 @@
       <linearGradient id="bd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2ee68f"/><stop offset=".55" stop-color="#19c3a6"/><stop offset="1" stop-color="#149e9e"/></linearGradient>
       <linearGradient id="bdl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7af0c0"/><stop offset="1" stop-color="#2ee68f"/></linearGradient>
       <linearGradient id="bsh" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0a1a14"/><stop offset="1" stop-color="#123a2c"/></linearGradient>
+      <linearGradient id="laser" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff3b0"/><stop offset=".3" stop-color="#ff2d2d"/><stop offset="1" stop-color="#ff6a00"/></linearGradient>
     </defs>
     <!-- striped tail -->
     <path d="M80 104 C108 112 120 98 116 82" fill="none" stroke="url(#bd)" stroke-width="12" stroke-linecap="round"/>
@@ -374,6 +383,13 @@
       </g>
       <!-- cool smirk -->
       <path d="M64 56 q8 4 15 -1" fill="none" stroke="#0c5e4e" stroke-width="2.6" stroke-linecap="round"/>
+      <!-- laser eyes (fire on beat-drop / overdrive) -->
+      <g class="lasers">
+        <line x1="58" y1="46" x2="0" y2="78" stroke="url(#laser)" stroke-width="3.6" stroke-linecap="round"/>
+        <line x1="84" y1="46" x2="146" y2="78" stroke="url(#laser)" stroke-width="3.6" stroke-linecap="round"/>
+        <circle cx="58" cy="46" r="3.4" fill="#fff3b0"/>
+        <circle cx="84" cy="46" r="3.4" fill="#fff3b0"/>
+      </g>
     </g>
     <!-- headphones -->
     <path d="M46 42 a25 25 0 0 1 50 0" fill="none" stroke="#0c2a1e" stroke-width="5" stroke-linecap="round"/>
@@ -600,8 +616,9 @@ load(0,false);
   // 點吉祥物 = BEAT DROP
   function beatDrop(){
     if(!mascot) return;
-    mascot.classList.remove('drop'); void mascot.offsetWidth; mascot.classList.add('drop');
+    mascot.classList.remove('drop'); void mascot.offsetWidth; mascot.classList.add('drop','fire');
     setTimeout(function(){ mascot.classList.remove('drop'); },760);
+    setTimeout(function(){ mascot.classList.remove('fire'); },900);
     if(eq){ eq.classList.add('spike'); setTimeout(function(){ eq.classList.remove('spike'); },950); }
     var r=mascot.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
     var ring=document.createElement('div'); ring.className='hero-ring';
