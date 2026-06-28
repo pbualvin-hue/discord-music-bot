@@ -8,6 +8,7 @@ scripts/deploy.env
 NOTES.md
 dashboard.html
 控制台.bat
+console.ps1
 update.bat
 
 # YouTube Cookies（含帳號登入資訊）
