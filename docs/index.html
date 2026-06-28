@@ -216,6 +216,43 @@
     font-family:'Cascadia Code',monospace;font-size:1.6rem;font-weight:800;color:var(--lime);letter-spacing:4px;
     text-shadow:0 0 24px var(--gecko);animation:odt 2s ease forwards}
   @keyframes odt{0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}18%{opacity:1;transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}}
+
+  /* ===== 誇張吉祥物 / 互動 ===== */
+  .mascot{animation:vibe 1.4s ease-in-out infinite;filter:drop-shadow(0 8px 20px #22d3ee55)}
+  @keyframes vibe{0%,100%{transform:translateY(0) rotate(-1.6deg)}50%{transform:translateY(-9px) rotate(1.6deg)}}
+  .mascot:hover{animation:vibe .42s ease-in-out infinite;filter:drop-shadow(0 0 26px #2ee68f) drop-shadow(0 0 13px #22d3ee)}
+  .mascot.drop{animation:beatdrop .72s cubic-bezier(.3,1.6,.5,1);filter:drop-shadow(0 0 34px #b6f24a) drop-shadow(0 0 16px #2ee68f)}
+  @keyframes beatdrop{0%{transform:scale(1)}22%{transform:translateY(-30px) scale(1.2) rotate(-10deg)}55%{transform:translateY(8px) scale(.9) rotate(8deg)}78%{transform:translateY(0) scale(1.05) rotate(-3deg)}100%{transform:none}}
+  /* 漂浮音符 */
+  .note-burst{position:fixed;z-index:9990;pointer-events:none;font-size:1.5rem;will-change:transform,opacity;
+    animation:noteup 1.4s ease-out forwards}
+  @keyframes noteup{0%{opacity:0;transform:translateY(0) scale(.4)}15%{opacity:1}
+    100%{opacity:0;transform:translateY(-170px) translateX(var(--nx,0)) scale(1.4) rotate(var(--nr,0))}}
+  /* beat drop 衝擊波 + 閃光 */
+  .hero-ring{position:fixed;z-index:9989;pointer-events:none;border:3px solid var(--gecko);border-radius:50%;
+    transform:translate(-50%,-50%);animation:hring .72s ease-out forwards;box-shadow:0 0 22px #2ee68f}
+  @keyframes hring{0%{width:0;height:0;opacity:.9}100%{width:560px;height:560px;opacity:0}}
+  .beatflash{position:fixed;inset:0;z-index:9988;pointer-events:none;
+    background:radial-gradient(circle at var(--bx,50%) var(--by,30%),rgba(46,230,143,.20),transparent 55%);animation:bflash .42s ease-out forwards}
+  @keyframes bflash{0%{opacity:0}22%{opacity:1}100%{opacity:0}}
+  .eq.spike i{animation-duration:.22s !important}
+  /* 背景蜥蜴：誇張化 */
+  .critter{opacity:.5}
+  .critter:hover{opacity:1;filter:drop-shadow(0 0 16px #2ee68f99)}
+  .c-cham{animation:sway 3.6s ease-in-out infinite}
+  .c-cham:hover{transform:scale(1.18)}
+  .c-cham:hover .tongue{transform:scaleX(14)}
+  .c-cham:hover .eye-turret{transform:rotate(52deg)}
+  .c-frill{animation:breathe 3s ease-in-out infinite}
+  .c-frill:hover .frill{transform:scale(1.55) rotate(8deg)}
+  .c-frill:hover{transform:translateX(-44px) scale(1.28) rotate(-6deg)}
+  .c-leo:hover{transform:scale(1.22) rotate(5deg)}
+  .c-iggy:hover .dewlap{transform:scaleY(1.5)}
+  .c-iggy:hover{transform:scale(1.18) rotate(-3deg)}
+  .c-mini{animation:crawl 2.4s ease-in-out infinite}
+  .c-mini:hover{transform:translateX(170px) rotate(22deg) scale(1.25)}
+  .critter.poke{animation:poke .62s cubic-bezier(.3,1.7,.5,1) !important}
+  @keyframes poke{0%{}38%{transform:translateY(-26px) scale(1.22) rotate(-6deg)}70%{transform:translateY(4px) scale(.96)}100%{}}
 </style>
 </head>
 <body>
@@ -543,6 +580,57 @@ load(0,false);
     addEventListener('keydown',function(e){i=(e.keyCode===sq[i])?i+1:(e.keyCode===sq[0]?1:0);
       if(i===sq.length){i=0;window.OD=!window.OD;document.body.classList.toggle('od');
         var d=document.createElement('div');d.className='od-toast';d.textContent='⚡ OVERDRIVE '+(window.OD?'ENGAGED':'OFFLINE');document.body.appendChild(d);setTimeout(function(){d.remove();},2000);}});})();
+})();
+</script>
+
+<!-- ===== 誇張吉祥物互動 ===== -->
+<script>
+(function(){
+  var mascot=document.querySelector('.mascot'), eq=document.querySelector('.eq');
+  var NOTE=['🎵','🎶','♪','♫','🦎','🔥','⚡','💿','🎧'];
+  function floatNote(cx,cy,big){
+    var n=document.createElement('div'); n.className='note-burst';
+    n.textContent=NOTE[Math.random()*(big?NOTE.length:4)|0];
+    n.style.left=(cx+(Math.random()-.5)*(big?130:70))+'px'; n.style.top=cy+'px';
+    n.style.setProperty('--nx',((Math.random()-.5)*(big?240:90))+'px');
+    n.style.setProperty('--nr',((Math.random()-.5)*(big?140:60))+'deg');
+    if(!big){ n.style.fontSize='1rem'; n.style.opacity='.7'; }
+    document.body.appendChild(n); setTimeout(function(){ n.remove(); },1400);
+  }
+  // 點吉祥物 = BEAT DROP
+  function beatDrop(){
+    if(!mascot) return;
+    mascot.classList.remove('drop'); void mascot.offsetWidth; mascot.classList.add('drop');
+    setTimeout(function(){ mascot.classList.remove('drop'); },760);
+    if(eq){ eq.classList.add('spike'); setTimeout(function(){ eq.classList.remove('spike'); },950); }
+    var r=mascot.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
+    var ring=document.createElement('div'); ring.className='hero-ring';
+    ring.style.left=cx+'px'; ring.style.top=cy+'px'; document.body.appendChild(ring);
+    setTimeout(function(){ ring.remove(); },760);
+    var fl=document.createElement('div'); fl.className='beatflash';
+    fl.style.setProperty('--bx',cx+'px'); fl.style.setProperty('--by',cy+'px');
+    document.body.appendChild(fl); setTimeout(function(){ fl.remove(); },440);
+    for(var i=0;i<18;i++) floatNote(cx,cy,true);
+  }
+  if(mascot){ mascot.style.cursor='pointer'; mascot.setAttribute('title','點我 drop the beat! 🔥'); mascot.addEventListener('click',beatDrop); }
+  // 持續從吉祥物冒小音符
+  setInterval(function(){ if(!mascot||document.hidden) return;
+    var r=mascot.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) return;
+    floatNote(r.left+r.width*(.3+Math.random()*.4), r.top+r.height*.45, false);
+  },850);
+
+  // 背景蜥蜴：隨機跳動 + 滑鼠靠近甦醒
+  var critters=[].slice.call(document.querySelectorAll('.critter'));
+  setInterval(function(){ if(!critters.length||document.hidden) return;
+    var c=critters[Math.random()*critters.length|0];
+    c.classList.remove('poke'); void c.offsetWidth; c.classList.add('poke');
+    setTimeout(function(){ c.classList.remove('poke'); },640);
+  },2400);
+  addEventListener('mousemove',function(e){
+    for(var i=0;i<critters.length;i++){ var c=critters[i], r=c.getBoundingClientRect();
+      var d=Math.hypot(e.clientX-(r.left+r.width/2), e.clientY-(r.top+r.height/2));
+      c.style.opacity = d<230 ? '1' : ''; }
+  });
 })();
 </script>
 </body>
