@@ -1,14 +1,14 @@
 # 環境變數（含 Token，絕對不可上傳）
 .env
 
-# 一鍵更新工具（含真實伺服器 IP，本機保留，repo 只放 update.bat.example）
-update.bat
-
 # 部署設定（含真實伺服器 IP / 金鑰路徑，本機保留，repo 只放 deploy.env.example）
 scripts/deploy.env
 
-# 私人運維手冊（含真實 IP / 伺服器資訊 / 完整維護流程，只給自己看）
+# 私人運維檔（含真實 IP / 伺服器資訊，只給自己看，皆不上傳）
 NOTES.md
+dashboard.html
+控制台.bat
+update.bat
 
 # YouTube Cookies（含帳號登入資訊）
 cookies.txt
