@@ -137,9 +137,9 @@ bash ~/discord-music-bot/scripts/update.sh
 
 ## 使用說明書
 
-完整 PDF 格式說明書（含截圖、參數說明、故障排除）：
+互動式使用手冊（含指令說明、面板操作、故障排除）：
 
-→ 在瀏覽器開啟 [`docs/user_manual.html`](docs/user_manual.html)，按 `Ctrl+P` 列印為 PDF。
+→ 在瀏覽器開啟 [`docs/index.html`](docs/index.html)；需要 PDF 可在瀏覽器按 `Ctrl+P` 列印。
 
 ---
 
@@ -208,7 +208,7 @@ discord-music-bot/
 │   ├── logger.py
 │   └── permissions.py
 ├── docs/
-│   └── user_manual.html            # 完整說明書（列印為 PDF）
+│   └── index.html                  # 互動式使用手冊（可列印為 PDF）
 ├── data/                           # SQLite DB（自動建立，不入 git）
 ├── sounds/                         # 入場音效 join.mp3 / leave.mp3（選用）
 └── scripts/
