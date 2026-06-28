@@ -81,8 +81,6 @@ bash scripts/deploy.sh
 bash ~/discord-music-bot/scripts/update.sh
 ```
 
-詳細部署說明與維護指南請參閱 [NOTES.md](NOTES.md)。
-
 ---
 
 ## 指令一覽
@@ -161,7 +159,9 @@ node --version
 # 3. 在 Discord 輸入 /ping 查看診斷結果
 ```
 
-若 `/ping` 仍顯示搜尋失敗，請設定 YouTube Cookies（詳見 NOTES.md）。
+若 `/ping` 仍顯示搜尋失敗，請設定 YouTube Cookies：用瀏覽器擴充套件
+「Get cookies.txt LOCALLY」**以無痕視窗**匯出 `cookies.txt`，並在 `.env`
+設定 `COOKIES_FILE` 指向它。
 
 ### Bot 有聲音但串流中斷
 
