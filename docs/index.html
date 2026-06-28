@@ -174,9 +174,63 @@
   .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--grad);color:#06140c;font-weight:700;padding:11px 20px;border-radius:12px;font-size:.9rem;opacity:0;transition:.25s;pointer-events:none;z-index:60;box-shadow:var(--shadow)}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   @media(max-width:680px){h1{font-size:2.1rem}.modes{grid-template-columns:1fr}.play-hero h2{flex-wrap:wrap}.demo-wrap{grid-template-columns:1fr}}
+
+  /* ===== sci-fi FX layer（fx- 前綴避免衝突）===== */
+  #fx-rain,#fx-bg{position:fixed;inset:0;pointer-events:none}
+  #fx-rain{z-index:-4;opacity:.13}
+  #fx-bg{z-index:-2}
+  .fx-plasma{position:fixed;inset:-25%;z-index:-3;pointer-events:none;opacity:.4;filter:blur(52px);
+    background:radial-gradient(30vmax 30vmax at 18% 28%,rgba(46,230,143,.22),transparent 60%),
+      radial-gradient(28vmax 28vmax at 84% 16%,rgba(34,211,238,.16),transparent 60%),
+      radial-gradient(26vmax 26vmax at 62% 84%,rgba(182,242,74,.13),transparent 60%);
+    animation:fxplasma 22s ease-in-out infinite alternate}
+  @keyframes fxplasma{0%{transform:translate(0,0) scale(1)}50%{transform:translate(3%,-3%) scale(1.12)}100%{transform:translate(-3%,2%) scale(1.05)}}
+  .fx-radar{position:fixed;left:50%;top:120%;width:150vmax;height:150vmax;transform:translate(-50%,-50%);
+    z-index:-3;pointer-events:none;border-radius:50%;opacity:.3;
+    background:conic-gradient(from 0deg,rgba(46,230,143,.10) 0deg,transparent 32deg);animation:fxradar 12s linear infinite}
+  @keyframes fxradar{to{transform:translate(-50%,-50%) rotate(360deg)}}
+  .fx-scan{position:fixed;inset:0;z-index:9994;pointer-events:none;opacity:.4;mix-blend-mode:overlay;
+    background:repeating-linear-gradient(180deg,rgba(255,255,255,.022) 0 1px,transparent 1px 3px);animation:fxscan 8s linear infinite}
+  @keyframes fxscan{to{background-position:0 300px}}
+  .fx-vig{position:fixed;inset:0;z-index:9993;pointer-events:none;background:radial-gradient(ellipse at center,transparent 56%,rgba(3,8,6,.5) 100%)}
+  .fx-glitch{position:fixed;inset:0;z-index:9995;pointer-events:none;opacity:0;mix-blend-mode:screen;
+    background:linear-gradient(90deg,rgba(34,211,238,.16),rgba(182,242,74,.16));animation:fxflick 9s infinite}
+  @keyframes fxflick{0%,96%,100%{opacity:0;transform:none}96.5%{opacity:.5;transform:translateX(3px)}97%{opacity:0}97.6%{opacity:.4;transform:translateX(-3px)}98%{opacity:0}}
+  #fx-glow{position:fixed;top:0;left:0;width:340px;height:340px;z-index:-1;pointer-events:none;
+    background:radial-gradient(circle,rgba(46,230,143,.10),transparent 70%);transition:transform .08s linear}
+  #fx-ret{position:fixed;top:0;left:0;z-index:9996;pointer-events:none}
+  #fx-ret .r1{position:absolute;width:32px;height:32px;margin:-16px 0 0 -16px;border:1px solid rgba(34,211,238,.5);
+    border-top-color:var(--gecko);border-right-color:transparent;border-radius:50%;animation:fxspin 3s linear infinite}
+  #fx-ret .r2{position:absolute;width:50px;height:50px;margin:-25px 0 0 -25px;border:1px dashed rgba(46,230,143,.25);border-radius:50%;animation:fxspin 8s linear infinite reverse}
+  #fx-ret .rd{position:absolute;width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+  @keyframes fxspin{to{transform:rotate(360deg)}}
+  #fx-boot{position:fixed;inset:0;z-index:10000;background:var(--bg);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;transition:opacity .6s ease;font-family:'Cascadia Code',Consolas,monospace}
+  #fx-boot.gone{opacity:0;pointer-events:none}
+  #fx-boot .blogo{font-size:1.7rem;font-weight:800;background:var(--grad-cool);-webkit-background-clip:text;background-clip:text;color:transparent}
+  #fx-boot pre{color:var(--gecko);font-size:.8rem;text-align:left;width:330px;max-width:82vw;min-height:90px;margin:0;white-space:pre-wrap;line-height:1.5}
+  body.od #fx-bg,body.od #fx-rain,body.od .fx-plasma,body.od .fx-radar{filter:hue-rotate(150deg) saturate(1.6)}
+  body.od{animation:fxshake .22s infinite}
+  @keyframes fxshake{0%,100%{transform:translate(0,0)}25%{transform:translate(1px,-1px)}50%{transform:translate(-1px,1px)}75%{transform:translate(1px,1px)}}
+  .od-toast{position:fixed;top:46%;left:50%;transform:translate(-50%,-50%);z-index:10001;pointer-events:none;
+    font-family:'Cascadia Code',monospace;font-size:1.6rem;font-weight:800;color:var(--lime);letter-spacing:4px;
+    text-shadow:0 0 24px var(--gecko);animation:odt 2s ease forwards}
+  @keyframes odt{0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}18%{opacity:1;transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}}
 </style>
 </head>
 <body>
+
+<!-- ===== sci-fi FX layer ===== -->
+<canvas id="fx-rain"></canvas>
+<canvas id="fx-bg"></canvas>
+<div class="fx-plasma"></div>
+<div class="fx-radar"></div>
+<div id="fx-glow"></div>
+<div class="fx-vig"></div>
+<div class="fx-glitch"></div>
+<div class="fx-scan"></div>
+<div id="fx-ret"><div class="r2"></div><div class="r1"></div><div class="rd"></div></div>
+<div id="fx-boot"><div class="blogo">🦎 GECKO GROOVE</div><pre id="fx-blog"></pre></div>
 
 <!-- ===== background lizard cast (spread down the whole page) ===== -->
 <div class="critters" aria-hidden="true">
@@ -433,6 +487,63 @@ document.getElementById('bPlay').onclick=function(){playing=!playing;this.textCo
 document.getElementById('bLoop').onclick=function(){loop=!loop;this.classList.toggle('on',loop);};
 document.getElementById('npBar').onclick=e=>{const r=e.currentTarget.getBoundingClientRect();cur=Math.floor((e.clientX-r.left)/r.width*PLAYLIST[idx].d);npF.style.width=(cur/PLAYLIST[idx].d*100)+'%';npC.textContent=fmt(cur);};
 load(0,false);
+</script>
+
+<!-- ===== sci-fi FX engine ===== -->
+<script>
+(function(){
+  var M={x:-999,y:-999}; window.OD=false;
+  addEventListener('mousemove',function(e){ M.x=e.clientX;M.y=e.clientY;
+    var r=document.getElementById('fx-ret'); if(r) r.style.transform='translate('+e.clientX+'px,'+e.clientY+'px)';
+    var g=document.getElementById('fx-glow'); if(g) g.style.transform='translate('+(e.clientX-170)+'px,'+(e.clientY-170)+'px)'; });
+  addEventListener('mouseout',function(){ M.x=-999;M.y=-999; });
+
+  // 粒子網路 + 滑鼠互動 + 點擊爆裂 + 游標拖尾
+  (function(){
+    var cv=document.getElementById('fx-bg'),x=cv.getContext('2d'),W,H,P,pk=[],bs=[],rg=[],tr=[];
+    function rs(){W=cv.width=innerWidth;H=cv.height=innerHeight;}
+    function init(){P=[];var n=Math.min(110,Math.floor(W*H/14000));for(var i=0;i<n;i++)P.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.33,vy:(Math.random()-.5)*.33});}
+    addEventListener('mousemove',function(e){tr.push({x:e.clientX,y:e.clientY,l:1});if(tr.length>22)tr.shift();});
+    addEventListener('click',function(e){rg.push({x:e.clientX,y:e.clientY,r:0,l:1});var c=22+(Math.random()*12|0);for(var i=0;i<c;i++){var a=Math.random()*6.283,s=1.5+Math.random()*5;bs.push({x:e.clientX,y:e.clientY,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:1});}});
+    function sp(){if(P.length<2)return;var a=Math.random()*P.length|0,b=Math.random()*P.length|0;if(a!==b)pk.push({a:a,b:b,t:0,s:.008+Math.random()*.022});}
+    function step(){var O=window.OD?2.2:1,lk=window.OD?'#22d3ee':'#2ee68f';x.clearRect(0,0,W,H);
+      for(var i=0;i<P.length;i++){var p=P[i];p.x+=p.vx*O;p.y+=p.vy*O;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;var dx=M.x-p.x,dy=M.y-p.y,md=Math.sqrt(dx*dx+dy*dy);if(md<160&&md>1){p.vx+=dx/md*.016;p.vy+=dy/md*.016;}p.vx*=.985;p.vy*=.985;}
+      for(var i=tr.length-1;i>=0;i--){var t=tr[i];t.l-=.06;if(t.l<=0){tr.splice(i,1);continue;}x.globalAlpha=t.l*.5;x.fillStyle='#22d3ee';x.beginPath();x.arc(t.x,t.y,t.l*3,0,7);x.fill();}
+      for(var i=0;i<P.length;i++)for(var j=i+1;j<P.length;j++){var a=P[i],b=P[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy);if(d<118){x.globalAlpha=(1-d/118)*.4;x.strokeStyle=lk;x.lineWidth=.5;x.beginPath();x.moveTo(a.x,a.y);x.lineTo(b.x,b.y);x.stroke();}}
+      for(var i=0;i<P.length;i++){var p=P[i],dx=M.x-p.x,dy=M.y-p.y,d=Math.sqrt(dx*dx+dy*dy);if(d<160){x.globalAlpha=(1-d/160)*.6;x.strokeStyle='#22d3ee';x.lineWidth=.6;x.beginPath();x.moveTo(M.x,M.y);x.lineTo(p.x,p.y);x.stroke();}}
+      x.globalAlpha=.85;for(var i=0;i<P.length;i++){var p=P[i];x.fillStyle=i%7===0?'#22d3ee':'#2ee68f';x.beginPath();x.arc(p.x,p.y,1.3,0,7);x.fill();}
+      for(var k=pk.length-1;k>=0;k--){var q=pk[k];q.t+=q.s*O;var a=P[q.a],b=P[q.b];if(q.t>=1||!a||!b){pk.splice(k,1);continue;}var px=a.x+(b.x-a.x)*q.t,py=a.y+(b.y-a.y)*q.t;x.globalAlpha=1;x.fillStyle='#b6f24a';x.shadowColor='#b6f24a';x.shadowBlur=8;x.beginPath();x.arc(px,py,2.2,0,7);x.fill();x.shadowBlur=0;}
+      for(var i=bs.length-1;i>=0;i--){var b=bs[i];b.x+=b.vx;b.y+=b.vy;b.vx*=.94;b.vy*=.94;b.l-=.022;if(b.l<=0){bs.splice(i,1);continue;}x.globalAlpha=b.l;x.fillStyle='#b6f24a';x.shadowColor='#2ee68f';x.shadowBlur=8;x.beginPath();x.arc(b.x,b.y,2*b.l+.5,0,7);x.fill();x.shadowBlur=0;}
+      for(var i=rg.length-1;i>=0;i--){var r=rg[i];r.r+=6;r.l-=.03;if(r.l<=0){rg.splice(i,1);continue;}x.globalAlpha=r.l*.65;x.strokeStyle='#22d3ee';x.lineWidth=2;x.beginPath();x.arc(r.x,r.y,r.r,0,7);x.stroke();}
+      x.globalAlpha=1;requestAnimationFrame(step);}
+    addEventListener('resize',function(){rs();init();});rs();init();step();setInterval(sp,650);
+  })();
+
+  // Matrix 數位雨
+  (function(){var c=document.getElementById('fx-rain'),x=c.getContext('2d'),W,H,cols,dp,fs=14,
+      ch='01ｱｲｳｴｵｶｷｸ<>/\\|=+*♪♫▮ΣΛΦ01'.split('');
+    function rs(){W=c.width=innerWidth;H=c.height=innerHeight;cols=Math.floor(W/fs);dp=[];for(var i=0;i<cols;i++)dp[i]=Math.random()*-H/fs;}
+    function draw(){x.fillStyle='rgba(10,22,15,.10)';x.fillRect(0,0,W,H);x.font=fs+'px monospace';
+      for(var i=0;i<cols;i++){var g=ch[Math.random()*ch.length|0],y=dp[i]*fs;x.fillStyle=Math.random()<.025?'rgba(182,242,74,.9)':'rgba(46,230,143,.4)';x.fillText(g,i*fs,y);if(y>H&&Math.random()>.975)dp[i]=0;dp[i]+=.55;}}
+    addEventListener('resize',rs);rs();setInterval(draw,55);})();
+
+  // 開機打字（公開頁，無任何敏感資訊）
+  (function(){var log=document.getElementById('fx-blog');if(!log)return;
+    var L=['> booting gecko groove ............ OK','> loading audio engine ........... OK','> connecting discord gateway .... OK','> spawning gecko cast ........... OK','> SYSTEM ONLINE'],li=0,ci=0;
+    function ty(){if(li>=L.length){setTimeout(function(){var b=document.getElementById('fx-boot');if(b)b.classList.add('gone');},420);return;}
+      log.textContent=L.slice(0,li).join('\n')+(li>0?'\n':'')+L[li].slice(0,ci)+'▋';ci++;
+      if(ci>L[li].length){li++;ci=0;setTimeout(ty,120);}else setTimeout(ty,18);}ty();})();
+
+  // 標題解碼
+  (function(){var G='ABCDEFGHIJKLMNOPQRSTUVWXYZ#%&*<>/',el=document.querySelector('h1 .g');if(!el)return;var fin=el.textContent,t0=Date.now();
+    (function f(){var p=Math.min(1,(Date.now()-t0)/1300),n=fin.length,o='';for(var i=0;i<n;i++)o+=(i<p*n)?fin[i]:(fin[i]===' '?' ':G[Math.random()*G.length|0]);el.textContent=o;if(p<1)requestAnimationFrame(f);else el.textContent=fin;})();})();
+
+  // Konami 超載彩蛋（↑↑↓↓←→←→ B A）
+  (function(){var sq=[38,38,40,40,37,39,37,39,66,65],i=0;
+    addEventListener('keydown',function(e){i=(e.keyCode===sq[i])?i+1:(e.keyCode===sq[0]?1:0);
+      if(i===sq.length){i=0;window.OD=!window.OD;document.body.classList.toggle('od');
+        var d=document.createElement('div');d.className='od-toast';d.textContent='⚡ OVERDRIVE '+(window.OD?'ENGAGED':'OFFLINE');document.body.appendChild(d);setTimeout(function(){d.remove();},2000);}});})();
+})();
 </script>
 </body>
 </html>
