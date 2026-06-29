@@ -295,6 +295,19 @@
     filter:blur(10px);z-index:1;pointer-events:none;animation:aurap 1.3s ease-in-out infinite}
   @keyframes aurap{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.45}50%{transform:translate(-50%,-50%) scale(1.2);opacity:.9}}
   body.od .aura{background:radial-gradient(circle,rgba(255,61,240,.36),transparent 64%)}
+
+  /* 🪰 飛蟲 / 舌頭 / 叼食 / 逃跑 */
+  .lz-fly{position:fixed;z-index:6;pointer-events:none;font-size:1rem;opacity:.85;transform:translate(-50%,-50%);
+    filter:drop-shadow(0 0 4px rgba(0,0,0,.4))}
+  .lz-tongue{position:fixed;height:5px;z-index:9990;pointer-events:none;transform-origin:left center;width:0;
+    background:linear-gradient(90deg,#ff5e7a,#ff9aa8);border-radius:3px;box-shadow:0 0 8px #ff5e7a;
+    transition:width .19s cubic-bezier(.4,1.7,.5,1)}
+  .lz-tongue::after{content:'';position:absolute;right:-3px;top:50%;width:8px;height:8px;border-radius:50%;
+    background:#ff5e7a;transform:translateY(-50%);box-shadow:0 0 7px #ff5e7a}
+  .lz-yum{position:fixed;z-index:9991;pointer-events:none;font-size:1.3rem;transform:translate(-50%,-50%);animation:lzyum .9s ease-out forwards}
+  @keyframes lzyum{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}30%{opacity:1;transform:translate(-50%,-110%) scale(1.2)}100%{opacity:0;transform:translate(-50%,-200%) scale(1)}}
+  .runner.flee .rbody{animation-duration:.09s !important}
+  .runner.flee{filter:drop-shadow(0 0 12px #ffc94d) !important;opacity:.88}
 </style>
 </head>
 <body>
@@ -714,6 +727,57 @@ load(0,false);
     var t=TRICKS[Math.random()*TRICKS.length|0], el=document.querySelector(t[0]); if(!el) return;
     el.classList.add(t[1]); setTimeout(function(){ el.classList.remove(t[1]); }, t[2]);
   },1200);
+
+  // === 飛蟲生態 + 點蜥蜴叼食 ===
+  var flies=[];
+  function spawnFly(){ if(flies.length>6||document.hidden) return;
+    var f=document.createElement('div'); f.className='lz-fly'; f.textContent=['🪰','🦗','🦟','🐛'][Math.random()*4|0];
+    var x=Math.random()*innerWidth, y=80+Math.random()*(innerHeight-160);
+    f.style.left=x+'px'; f.style.top=y+'px'; document.body.appendChild(f);
+    flies.push({el:f,x:x,y:y,vx:(Math.random()-.5)*1.3,vy:(Math.random()-.5)*1.3}); }
+  setInterval(spawnFly,2400); spawnFly(); spawnFly();
+  (function flyLoop(){ for(var i=0;i<flies.length;i++){ var f=flies[i];
+      f.vx+=(Math.random()-.5)*.4; f.vy+=(Math.random()-.5)*.4;
+      f.vx=Math.max(-2,Math.min(2,f.vx)); f.vy=Math.max(-2,Math.min(2,f.vy));
+      f.x+=f.vx; f.y+=f.vy;
+      if(f.x<10||f.x>innerWidth-10)f.vx*=-1; if(f.y<60||f.y>innerHeight-30)f.vy*=-1;
+      f.el.style.left=f.x+'px'; f.el.style.top=f.y+'px'; }
+    requestAnimationFrame(flyLoop); })();
+  function zap(liz,cx,cy,tx,ty,fo){
+    var dx=tx-cx,dy=ty-cy,dist=Math.hypot(dx,dy),ang=Math.atan2(dy,dx)*180/Math.PI;
+    var t=document.createElement('div');t.className='lz-tongue';t.style.left=cx+'px';t.style.top=cy+'px';
+    t.style.transform='rotate('+ang+'deg)';t.style.width='0px';document.body.appendChild(t);
+    requestAnimationFrame(function(){ t.style.width=dist+'px'; });
+    var bug = fo ? fo.el : (function(){ var b=document.createElement('div');b.className='lz-fly';b.textContent='🐛';
+      b.style.left=tx+'px';b.style.top=ty+'px';document.body.appendChild(b);return b; })();
+    setTimeout(function(){ t.style.width='0px';
+      if(bug){ bug.style.transition='all .2s ease'; bug.style.left=cx+'px'; bug.style.top=cy+'px'; bug.style.opacity='0'; } },210);
+    setTimeout(function(){ t.remove(); if(bug)bug.remove();
+      var y=document.createElement('div');y.className='lz-yum';y.textContent='😋';y.style.left=cx+'px';y.style.top=cy+'px';
+      document.body.appendChild(y);setTimeout(function(){y.remove();},900); },440);
+    liz.classList.add('poke'); setTimeout(function(){ liz.classList.remove('poke'); },620);
+  }
+  function eat(liz){ var r=liz.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,bi=-1,bd=1e9;
+    for(var i=0;i<flies.length;i++){ var d=Math.hypot(flies[i].x-cx,flies[i].y-cy); if(d<bd){bd=d;bi=i;} }
+    var tx,ty,fo=null;
+    if(bi>=0&&bd<1000){ fo=flies[bi]; tx=fo.x; ty=fo.y; flies.splice(bi,1); }
+    else { var a=Math.random()*6.283; tx=cx+Math.cos(a)*220; ty=cy+Math.sin(a)*150; }
+    zap(liz,cx,cy,tx,ty,fo); }
+  critters.forEach(function(c){ c.style.cursor='pointer'; c.addEventListener('click',function(){ eat(c); }); });
+
+  // === 守宮遇滑鼠加速逃跑（JS 驅動橫移）===
+  var runners=[].slice.call(document.querySelectorAll('.runner'));
+  runners.forEach(function(el,k){ el.style.animation='none'; el._fl=1;
+    var dir=k%2===0?1:-1, base=1.1+k*0.4, x=dir>0?-160:innerWidth+60;
+    (function frame(){ var sp=base*(el._fl||1); if(document.body.classList.contains('od')) sp*=2.2;
+      x+=dir*sp;
+      if(dir>0&&x>innerWidth+90)x=-160; if(dir<0&&x<-160)x=innerWidth+90;
+      el.style.transform='translateX('+x+'px)'+(dir<0?' scaleX(-1)':'');
+      requestAnimationFrame(frame); })();
+  });
+  addEventListener('mousemove',function(e){ for(var i=0;i<runners.length;i++){ var el=runners[i],r=el.getBoundingClientRect();
+    var near=Math.hypot(e.clientX-(r.left+r.width/2),e.clientY-(r.top+r.height/2))<160;
+    el._fl=near?4:1; el.classList.toggle('flee',near); } });
 })();
 </script>
 </body>
