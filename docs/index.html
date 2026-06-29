@@ -261,6 +261,40 @@
   body.od .mascot{animation:vibe .3s ease-in-out infinite !important;
     filter:drop-shadow(0 0 30px #ff3df0) drop-shadow(0 0 14px #22d3ee) hue-rotate(55deg) saturate(1.6) !important}
   body.od .eq i{animation-duration:.24s !important}
+
+  /* ===== 🦎 LIZARD RAVE 蜥蜴銳舞 ===== */
+  .critters .critter{opacity:.62;filter:drop-shadow(0 0 7px rgba(46,230,143,.45))}
+  .critters .critter:hover{opacity:1;filter:drop-shadow(0 0 18px #2ee68f) drop-shadow(0 0 6px #b6f24a)}
+  .c-cham{width:222px !important;animation:rave1 2.2s ease-in-out infinite !important}
+  .c-frill{width:200px !important;animation:rave2 1.9s ease-in-out infinite !important}
+  .c-leo{width:222px !important;animation:rave1 2.5s ease-in-out infinite !important}
+  .c-iggy{width:234px !important;animation:rave2 2.3s ease-in-out infinite !important}
+  .c-mini{width:112px !important;animation:rave3 1.35s ease-in-out infinite !important}
+  @keyframes rave1{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-13px) rotate(4deg)}}
+  @keyframes rave2{0%,100%{transform:translateY(0) scale(1) rotate(2deg)}50%{transform:translateY(-9px) scale(1.06) rotate(-2deg)}}
+  @keyframes rave3{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-9px) rotate(6deg)}}
+  /* 自動特技（JS 週期觸發）*/
+  .c-cham.zap .tongue{transform:scaleX(13) !important}
+  .c-frill.flare .frill{transform:scale(1.55) rotate(8deg) !important}
+  .c-leo.blink .lid{transform:scaleY(.08) !important}
+  .c-iggy.show .dewlap{transform:scaleY(1.45) !important}
+  /* 橫越畫面的奔跑守宮 */
+  .runner{position:fixed;z-index:1;pointer-events:none;opacity:.55;filter:drop-shadow(0 0 9px rgba(46,230,143,.55))}
+  .runner .rbody{transform-box:fill-box;transform-origin:center;animation:wig .2s ease-in-out infinite}
+  @keyframes wig{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-3px) rotate(5deg)}}
+  @keyframes roamR{from{transform:translateX(-160px)}to{transform:translateX(calc(100vw + 80px))}}
+  @keyframes roamL{from{transform:translateX(calc(100vw + 80px)) scaleX(-1)}to{transform:translateX(-160px) scaleX(-1)}}
+  /* 超載：全體加速狂奔 + 洋紅 */
+  body.od .c-cham,body.od .c-frill,body.od .c-leo,body.od .c-iggy,body.od .c-mini{animation-duration:.4s !important;filter:drop-shadow(0 0 16px #ff3df0) !important;opacity:.95 !important}
+  body.od .runner{animation-duration:2.2s !important;filter:drop-shadow(0 0 14px #ff3df0) !important}
+  /* 吉祥物脈動光環 */
+  header{position:relative}
+  .mascot{position:relative;z-index:3}
+  .aura{position:absolute;left:50%;top:120px;width:255px;height:255px;transform:translate(-50%,-50%);
+    border-radius:50%;background:radial-gradient(circle,rgba(46,230,143,.30),transparent 64%);
+    filter:blur(10px);z-index:1;pointer-events:none;animation:aurap 1.3s ease-in-out infinite}
+  @keyframes aurap{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.45}50%{transform:translate(-50%,-50%) scale(1.2);opacity:.9}}
+  body.od .aura{background:radial-gradient(circle,rgba(255,61,240,.36),transparent 64%)}
 </style>
 </head>
 <body>
@@ -338,8 +372,33 @@
   </svg>
 </div>
 
+<!-- ===== 橫越畫面奔跑的守宮 ===== -->
+<svg class="runner" style="top:13%;animation:roamR 9s linear infinite" viewBox="0 0 90 90" width="80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs><linearGradient id="rn1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2ee68f"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs>
+  <g class="rbody">
+    <path d="M44 58 C64 66 66 48 52 48" fill="none" stroke="url(#rn1)" stroke-width="7" stroke-linecap="round"/>
+    <path d="M30 40 l-9-6 M30 56 l-9 7 M58 40 l9-6 M58 56 l9 7" stroke="url(#rn1)" stroke-width="5" stroke-linecap="round"/>
+    <ellipse cx="44" cy="48" rx="18" ry="20" fill="url(#rn1)"/><ellipse cx="44" cy="28" rx="15" ry="13" fill="url(#rn1)"/>
+    <circle cx="38" cy="26" r="5" fill="#06140c"/><circle cx="39" cy="24" r="1.8" fill="#fff"/>
+    <circle cx="51" cy="26" r="5" fill="#06140c"/><circle cx="52" cy="24" r="1.8" fill="#fff"/>
+    <path d="M40 34 q5 4 10 0" fill="none" stroke="#06140c" stroke-width="2" stroke-linecap="round"/>
+  </g>
+</svg>
+<svg class="runner" style="top:auto;bottom:7%;animation:roamL 13s linear infinite;animation-delay:-5s" viewBox="0 0 90 90" width="62" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs><linearGradient id="rn2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b6f24a"/><stop offset="1" stop-color="#19c3a6"/></linearGradient></defs>
+  <g class="rbody">
+    <path d="M44 58 C64 66 66 48 52 48" fill="none" stroke="url(#rn2)" stroke-width="7" stroke-linecap="round"/>
+    <path d="M30 40 l-9-6 M30 56 l-9 7 M58 40 l9-6 M58 56 l9 7" stroke="url(#rn2)" stroke-width="5" stroke-linecap="round"/>
+    <ellipse cx="44" cy="48" rx="18" ry="20" fill="url(#rn2)"/><ellipse cx="44" cy="28" rx="15" ry="13" fill="url(#rn2)"/>
+    <circle cx="38" cy="26" r="5" fill="#06140c"/><circle cx="39" cy="24" r="1.8" fill="#fff"/>
+    <circle cx="51" cy="26" r="5" fill="#06140c"/><circle cx="52" cy="24" r="1.8" fill="#fff"/>
+    <path d="M40 34 q5 4 10 0" fill="none" stroke="#06140c" stroke-width="2" stroke-linecap="round"/>
+  </g>
+</svg>
+
 <div class="wrap">
 <header>
+  <div class="aura"></div>
   <!-- Cool bearded dragon DJ — hover: shades slide down + wink, beard puffs -->
   <svg class="mascot" viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg" aria-label="戴墨鏡與耳機的鬆獅蜥 DJ">
     <defs>
@@ -648,6 +707,13 @@ load(0,false);
       var d=Math.hypot(e.clientX-(r.left+r.width/2), e.clientY-(r.top+r.height/2));
       c.style.opacity = d<230 ? '1' : ''; }
   });
+
+  // 蜥蜴自動表演特技（舌頭暴衝 / 傘領炸開 / 眨眼 / 喉袋）
+  var TRICKS=[['.c-cham','zap',600],['.c-frill','flare',650],['.c-leo','blink',180],['.c-iggy','show',700]];
+  setInterval(function(){ if(document.hidden) return;
+    var t=TRICKS[Math.random()*TRICKS.length|0], el=document.querySelector(t[0]); if(!el) return;
+    el.classList.add(t[1]); setTimeout(function(){ el.classList.remove(t[1]); }, t[2]);
+  },1200);
 })();
 </script>
 </body>
