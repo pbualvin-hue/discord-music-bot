@@ -265,7 +265,7 @@
   /* ===== 🦎 LIZARD RAVE 蜥蜴銳舞 ===== */
   .critters .critter{opacity:.62;filter:drop-shadow(0 0 7px rgba(46,230,143,.45))}
   .critters .critter:hover{opacity:1;filter:drop-shadow(0 0 18px #2ee68f) drop-shadow(0 0 6px #b6f24a)}
-  .c-cham{width:222px !important;animation:rave1 2.2s ease-in-out infinite !important}
+  .c-cham{width:222px !important;animation:rave1 2.2s ease-in-out infinite, chamhue 7s linear infinite !important}
   .c-frill{width:200px !important;animation:rave2 1.9s ease-in-out infinite !important}
   .c-leo{width:222px !important;animation:rave1 2.5s ease-in-out infinite !important}
   .c-iggy{width:234px !important;animation:rave2 2.3s ease-in-out infinite !important}
@@ -308,6 +308,24 @@
   @keyframes lzyum{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}30%{opacity:1;transform:translate(-50%,-110%) scale(1.2)}100%{opacity:0;transform:translate(-50%,-200%) scale(1)}}
   .runner.flee .rbody{animation-duration:.09s !important}
   .runner.flee{filter:drop-shadow(0 0 12px #ffc94d) !important;opacity:.88}
+
+  /* 🦎 變色龍變色 */
+  @keyframes chamhue{0%{filter:drop-shadow(0 0 7px rgba(46,230,143,.45)) hue-rotate(0deg)}100%{filter:drop-shadow(0 0 7px rgba(46,230,143,.45)) hue-rotate(360deg)}}
+  /* 捕食計數 / 蛋 / frenzy toast */
+  .lz-score{position:fixed;left:16px;bottom:16px;z-index:40;font-family:var(--head);font-size:.9rem;color:var(--gecko);
+    background:#0e2418cc;border:1px solid var(--edge);border-radius:999px;padding:7px 15px;box-shadow:0 0 14px rgba(46,230,143,.15)}
+  .lz-score b{color:#fff;font-size:1.05rem}
+  .lz-score.pop{animation:scorepop .3s ease}
+  @keyframes scorepop{40%{transform:scale(1.25)}}
+  .lz-egg{position:fixed;right:18px;bottom:16px;z-index:41;font-size:1.7rem;cursor:pointer;user-select:none;
+    animation:eggwob 2.4s ease-in-out infinite;filter:drop-shadow(0 0 6px rgba(255,201,77,.5))}
+  @keyframes eggwob{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+  .lz-egg.crack{animation:eggshake .4s linear}
+  @keyframes eggshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px) rotate(-12deg)}75%{transform:translateX(3px) rotate(12deg)}}
+  .lz-toast{position:fixed;top:18%;left:50%;transform:translate(-50%,-50%);z-index:9992;pointer-events:none;
+    font-family:var(--head);font-weight:800;font-size:1.5rem;color:var(--lime);letter-spacing:2px;
+    text-shadow:0 0 22px var(--gecko);animation:lztoast 1.8s ease forwards}
+  @keyframes lztoast{0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}18%{opacity:1;transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.2)}}
 </style>
 </head>
 <body>
@@ -554,6 +572,8 @@
 </div>
 
 <div class="toast" id="toast">已複製 ✓</div>
+<div class="lz-score" id="lzscore">🦎 捕食 <b>0</b></div>
+<div class="lz-egg" id="lzegg" title="戳戳看？">🥚</div>
 
 <script>
 /* ---------- command catalogue ---------- */
@@ -736,9 +756,12 @@ load(0,false);
     f.style.left=x+'px'; f.style.top=y+'px'; document.body.appendChild(f);
     flies.push({el:f,x:x,y:y,vx:(Math.random()-.5)*1.3,vy:(Math.random()-.5)*1.3}); }
   setInterval(spawnFly,2400); spawnFly(); spawnFly();
+  var FMX=-999,FMY=-999; addEventListener('mousemove',function(e){ FMX=e.clientX; FMY=e.clientY; });
   (function flyLoop(){ for(var i=0;i<flies.length;i++){ var f=flies[i];
       f.vx+=(Math.random()-.5)*.4; f.vy+=(Math.random()-.5)*.4;
-      f.vx=Math.max(-2,Math.min(2,f.vx)); f.vy=Math.max(-2,Math.min(2,f.vy));
+      var rx=f.x-FMX, ry=f.y-FMY, rd=Math.hypot(rx,ry);
+      if(rd<130&&rd>1){ f.vx+=rx/rd*0.9; f.vy+=ry/rd*0.9; }   /* 閃避滑鼠 */
+      f.vx=Math.max(-3,Math.min(3,f.vx)); f.vy=Math.max(-3,Math.min(3,f.vy));
       f.x+=f.vx; f.y+=f.vy;
       if(f.x<10||f.x>innerWidth-10)f.vx*=-1; if(f.y<60||f.y>innerHeight-30)f.vy*=-1;
       f.el.style.left=f.x+'px'; f.el.style.top=f.y+'px'; }
@@ -757,10 +780,16 @@ load(0,false);
       document.body.appendChild(y);setTimeout(function(){y.remove();},900); },440);
     liz.classList.add('poke'); setTimeout(function(){ liz.classList.remove('poke'); },620);
   }
+  var eaten=0, scoreEl=document.getElementById('lzscore');
+  function frenzy(){ var d=document.createElement('div'); d.className='lz-toast'; d.textContent='🦎 FEEDING FRENZY! ⚡';
+    document.body.appendChild(d); setTimeout(function(){ d.remove(); },1800);
+    critters.forEach(function(c){ c.classList.add('poke'); setTimeout(function(){ c.classList.remove('poke'); },620); }); }
   function eat(liz){ var r=liz.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,bi=-1,bd=1e9;
     for(var i=0;i<flies.length;i++){ var d=Math.hypot(flies[i].x-cx,flies[i].y-cy); if(d<bd){bd=d;bi=i;} }
     var tx,ty,fo=null;
-    if(bi>=0&&bd<1000){ fo=flies[bi]; tx=fo.x; ty=fo.y; flies.splice(bi,1); }
+    if(bi>=0&&bd<1000){ fo=flies[bi]; tx=fo.x; ty=fo.y; flies.splice(bi,1);
+      eaten++; if(scoreEl){ scoreEl.querySelector('b').textContent=eaten; scoreEl.classList.remove('pop'); void scoreEl.offsetWidth; scoreEl.classList.add('pop'); }
+      if(eaten%10===0) frenzy(); }
     else { var a=Math.random()*6.283; tx=cx+Math.cos(a)*220; ty=cy+Math.sin(a)*150; }
     zap(liz,cx,cy,tx,ty,fo); }
   critters.forEach(function(c){ c.style.cursor='pointer'; c.addEventListener('click',function(){ eat(c); }); });
@@ -778,6 +807,65 @@ load(0,false);
   addEventListener('mousemove',function(e){ for(var i=0;i<runners.length;i++){ var el=runners[i],r=el.getBoundingClientRect();
     var near=Math.hypot(e.clientX-(r.left+r.width/2),e.clientY-(r.top+r.height/2))<160;
     el._fl=near?4:1; el.classList.toggle('flee',near); } });
+})();
+</script>
+
+<!-- ===== 蜥蜴創意彩蛋：盯人 / 視差 / 孵蛋 / 召喚大軍 ===== -->
+<script>
+(function(){
+  var mx=-999,my=-999; addEventListener('mousemove',function(e){ mx=e.clientX; my=e.clientY; });
+
+  // 變色龍轉動眼球盯著滑鼠
+  var cham=document.querySelector('.c-cham'), turret=cham&&cham.querySelector('.eye-turret');
+  (function eye(){ if(turret&&mx>-1){ var r=cham.getBoundingClientRect(),
+      ex=r.left+r.width*(100/150), ey=r.top+r.height*(58/110),
+      a=Math.atan2(my-ey,mx-ex)*180/Math.PI;
+      turret.style.transform='rotate('+Math.max(-55,Math.min(55,a))+'deg)'; }
+    requestAnimationFrame(eye); })();
+
+  // 背景蜥蜴視差
+  var crs=document.querySelector('.critters');
+  addEventListener('mousemove',function(e){ if(!crs) return;
+    crs.style.transform='translate('+(-(e.clientX/innerWidth-.5)*16)+'px,'+(-(e.clientY/innerHeight-.5)*16)+'px)'; });
+
+  function toast(t){ var d=document.createElement('div'); d.className='lz-toast'; d.textContent=t;
+    document.body.appendChild(d); setTimeout(function(){ d.remove(); },1800); }
+
+  // 迷你守宮 SVG 工廠
+  function makeGecko(size,gid){
+    var s=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    s.setAttribute('viewBox','0 0 90 90'); s.setAttribute('width',size); s.setAttribute('class','runner');
+    s.innerHTML='<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2ee68f"/><stop offset="1" stop-color="#b6f24a"/></linearGradient></defs>'
+      +'<g class="rbody"><path d="M44 58 C64 66 66 48 52 48" fill="none" stroke="url(#'+gid+')" stroke-width="7" stroke-linecap="round"/>'
+      +'<path d="M30 40 l-9-6 M30 56 l-9 7 M58 40 l9-6 M58 56 l9 7" stroke="url(#'+gid+')" stroke-width="5" stroke-linecap="round"/>'
+      +'<ellipse cx="44" cy="48" rx="18" ry="20" fill="url(#'+gid+')"/><ellipse cx="44" cy="28" rx="15" ry="13" fill="url(#'+gid+')"/>'
+      +'<circle cx="38" cy="26" r="5" fill="#06140c"/><circle cx="39" cy="24" r="1.8" fill="#fff"/>'
+      +'<circle cx="51" cy="26" r="5" fill="#06140c"/><circle cx="52" cy="24" r="1.8" fill="#fff"/>'
+      +'<path d="M40 34 q5 4 10 0" fill="none" stroke="#06140c" stroke-width="2" stroke-linecap="round"/></g>';
+    return s;
+  }
+  function dash(size,top,dir,gid){ var g=makeGecko(size,gid); g.style.top=top; document.body.appendChild(g);
+    var x=dir>0?-140:innerWidth+40, sp=4+Math.random()*3.5;
+    (function f(){ x+=dir*sp; g.style.transform='translateX('+x+'px)'+(dir<0?' scaleX(-1)':'');
+      if((dir>0&&x>innerWidth+60)||(dir<0&&x<-140)){ g.remove(); return; } requestAnimationFrame(f); })(); }
+
+  // 蛋：戳三下孵化寶寶守宮
+  var egg=document.getElementById('lzegg'), taps=0, gc=0;
+  if(egg) egg.addEventListener('click',function(){ taps++;
+    egg.classList.remove('crack'); void egg.offsetWidth; egg.classList.add('crack');
+    if(taps>=3){ taps=0; var r=egg.getBoundingClientRect(); toast('🐣 孵化！');
+      dash(68, r.top+'px', -1, 'egg'+(gc++)); egg.style.display='none';
+      setTimeout(function(){ egg.style.display=''; },9000); }
+  });
+
+  // 打字 "gecko" → 守宮大軍
+  var buf=''; addEventListener('keydown',function(e){ if(!e.key||e.key.length!==1) return;
+    buf=(buf+e.key.toLowerCase()).slice(-5);
+    if(buf==='gecko'){ buf=''; toast('🦎 GECKO SWARM!');
+      for(var i=0;i<10;i++){ (function(i){ setTimeout(function(){
+        dash(40+Math.random()*44, (8+Math.random()*82)+'%', Math.random()<.5?1:-1, 'sw'+(gc++)+'_'+i);
+      }, i*110); })(i); } }
+  });
 })();
 </script>
 </body>
