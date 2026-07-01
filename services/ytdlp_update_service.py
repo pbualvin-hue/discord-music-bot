@@ -45,11 +45,24 @@ async def get_latest_ytdlp_version() -> Optional[str]:
         return None
 
 
+def _ver_tuple(v: str) -> tuple:
+    """Parse a yt-dlp version like '2026.06.09' / '2026.6.9' into an int tuple.
+    Normalises zero-padding so '2026.06.09' == '2026.6.9'."""
+    out = []
+    for part in v.strip().split("."):
+        digits = ""
+        for ch in part:
+            if ch.isdigit():
+                digits += ch
+            else:
+                break  # ignore any non-numeric suffix (e.g. nightly tags)
+        out.append(int(digits) if digits else 0)
+    return tuple(out)
+
+
 def is_newer(latest: str, current: str) -> bool:
-    """True if *latest* is a newer version than *current*."""
+    """True if *latest* is strictly newer than *current* (numeric, zero-pad safe)."""
     try:
-        from packaging.version import parse
-        return parse(latest) > parse(current)
+        return _ver_tuple(latest) > _ver_tuple(current)
     except Exception:
-        # yt-dlp versions are date-based (YYYY.MM.DD) — string compare is chronological.
-        return latest > current
+        return False  # if we can't parse, don't nag
