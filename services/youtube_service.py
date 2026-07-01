@@ -18,6 +18,27 @@ os.makedirs(_DL_DIR, exist_ok=True)
 # Full download over the tunnel takes longer than a metadata fetch.
 _DL_TIMEOUT = 120.0
 
+# Concurrent requests for the same video are coalesced into one download, so a
+# prefetch and an on-demand fetch can't race and collide on the same .part file.
+_INFLIGHT: dict = {}
+
+
+class VideoUnavailable(Exception):
+    """A video that is permanently gone (removed / private / region-blocked).
+    Callers should skip it silently rather than treat it as a network failure."""
+
+
+_UNAVAIL_MARKERS = (
+    "video unavailable", "not available", "no longer available",
+    "private video", "removed following", "members-only",
+    "has blocked it", "account associated", "been terminated", "copyright",
+)
+
+
+def _is_unavailable(err: str) -> bool:
+    low = err.lower()
+    return any(m in low for m in _UNAVAIL_MARKERS)
+
 # -hide_banner/-loglevel error silence FFmpeg's banner and the benign
 # "Will reconnect / Input-output error" chatter it prints when playback is
 # stopped or skipped mid-stream (we detect real failures in Python instead).
@@ -440,9 +461,23 @@ def clear_download_cache() -> None:
 
 
 async def _download_audio(song: Song) -> Optional[str]:
-    """Download *song*'s audio to the cache dir and return the local file path."""
+    """Download *song*'s audio and return the local file path. Concurrent
+    requests for the same video share a single download (no .part collision).
+    Raises VideoUnavailable if the video is permanently gone."""
+    key = _download_target(song)
+    fut = _INFLIGHT.get(key)
+    if fut is not None:
+        return await fut  # a download for this video is already running — reuse it
+    fut = asyncio.ensure_future(_do_download(song, key))
+    _INFLIGHT[key] = fut
+    try:
+        return await fut
+    finally:
+        _INFLIGHT.pop(key, None)
+
+
+async def _do_download(song: Song, target: str) -> Optional[str]:
     loop = asyncio.get_running_loop()
-    target = _download_target(song)
     opts = _build_opts(_YDL_STREAM)
     opts = {**opts, "outtmpl": os.path.join(_DL_DIR, "%(id)s.%(ext)s")}
 
@@ -470,6 +505,11 @@ async def _download_audio(song: Song) -> Optional[str]:
             )
     except asyncio.TimeoutError:
         logger.error("Download timed out after %ss for: %s", _DL_TIMEOUT, song.title)
+        return None
+    except yt_dlp.utils.DownloadError as exc:
+        if _is_unavailable(str(exc)):
+            raise VideoUnavailable(str(exc))  # dead video — skip, don't retry/stream
+        logger.error("Download failed for '%s': %s", song.title, exc)
         return None
     except Exception as exc:
         logger.error("Download failed for '%s': %s", song.title, exc)

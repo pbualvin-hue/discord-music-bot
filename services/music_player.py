@@ -17,6 +17,7 @@ from services.stats_service import record_play
 from services.youtube_service import (
     FFMPEG_BEFORE_OPTIONS,
     FFMPEG_LIVE_BEFORE_OPTIONS,
+    VideoUnavailable,
     cleanup_download,
     get_playable_source,
     get_stream_url,
@@ -224,8 +225,8 @@ class MusicPlayer:
     # ── Core playback ──────────────────────────────────────────────────
 
     async def play_next(self, guild_id: int, _skip_count: int = 0) -> None:
-        if _skip_count >= 3:
-            logger.error("[Guild %s] 3 consecutive stream failures — stopping.", guild_id)
+        if _skip_count >= 5:
+            logger.error("[Guild %s] 5 consecutive stream failures — stopping.", guild_id)
             state = self.get_state(guild_id)
             cleanup_download(state.current_stream_url)
             state.current_stream_url = None
@@ -233,7 +234,7 @@ class MusicPlayer:
             if state.last_text_channel:
                 try:
                     await state.last_text_channel.send(
-                        "❌ 連續 3 首無法播放，已自動停止。請確認網路或稍後再試。"
+                        "❌ 連續 5 首無法播放，已自動停止。請確認網路或稍後再試。"
                     )
                 except Exception:
                     pass
@@ -333,7 +334,16 @@ class MusicPlayer:
             logger.info("[Guild %s] Using prefetched source for '%s'", guild_id, song.title)
         else:
             self._clear_prefetch(state)    # stale prefetch for a different song
-            stream_url = await get_playable_source(song)
+            try:
+                stream_url = await get_playable_source(song)
+            except VideoUnavailable as exc:
+                # Removed / private / region-blocked video (common in old playlists
+                # after copyright takedowns). Skip it, but DON'T count it toward the
+                # consecutive-failure stop — it's a dead entry, not a network problem.
+                logger.info("[Guild %s] '%s' 已下架/無法播放，跳過：%s", guild_id, song.title, exc)
+                state.current_song = None
+                await self.play_next(guild_id, _skip_count)
+                return
 
         if not stream_url:
             logger.error("[Guild %s] No source for '%s', skipping.", guild_id, song.title)
