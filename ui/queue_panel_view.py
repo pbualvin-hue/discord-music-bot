@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import discord
 
-from utils.permissions import check_dj, check_voice, is_dj
+from utils.permissions import check_dj, check_voice
 
 if TYPE_CHECKING:
     from services.music_player import MusicPlayer

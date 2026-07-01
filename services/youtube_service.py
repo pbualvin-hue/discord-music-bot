@@ -47,10 +47,6 @@ _DEAD: set = set()
 _ALT: dict = {}
 
 
-def is_known_dead(url: str) -> bool:
-    return url in _DEAD
-
-
 def cached_alt(url: str):
     return _ALT.get(url)
 
