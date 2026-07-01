@@ -1,11 +1,31 @@
 import asyncio
 import json
 import urllib.request
+from pathlib import Path
 from typing import Optional
 
 from utils.logger import logger
 
 _PYPI_URL = "https://pypi.org/pypi/yt-dlp/json"
+
+# Remember which version we already notified about, PERSISTED across restarts —
+# otherwise every bot restart forgets and re-notifies for the same version.
+_STATE_FILE = Path(__file__).resolve().parent.parent / "data" / "ytdlp_notified.txt"
+
+
+def load_notified() -> Optional[str]:
+    try:
+        return (_STATE_FILE.read_text(encoding="utf-8").strip() or None)
+    except Exception:
+        return None
+
+
+def save_notified(version: str) -> None:
+    try:
+        _STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _STATE_FILE.write_text(version, encoding="utf-8")
+    except Exception:
+        pass
 
 
 async def get_latest_ytdlp_version() -> Optional[str]:

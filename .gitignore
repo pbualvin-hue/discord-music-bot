@@ -35,6 +35,9 @@ Thumbs.db
 *.log
 *.log.*
 
+# yt-dlp 更新通知的已通知版本狀態（本地）
+data/ytdlp_notified.txt
+
 # SQLite 資料庫（包含播放統計，本地資料）
 data/*.db
 data/*.db-shm

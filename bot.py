@@ -26,7 +26,6 @@ class MusicBot(commands.Bot):
             help_command=None,
         )
         self.player = MusicPlayer()
-        self._ytdlp_notified_version: str | None = None
 
     async def setup_hook(self) -> None:
         from commands.music import setup
@@ -103,14 +102,24 @@ class MusicBot(commands.Bot):
     async def _ytdlp_update_check(self) -> None:
         """Notify the configured channel when a newer yt-dlp version is on PyPI."""
         import yt_dlp as _ytdlp
-        from services.ytdlp_update_service import get_latest_ytdlp_version, is_newer
+        from services.ytdlp_update_service import (
+            get_latest_ytdlp_version,
+            is_newer,
+            load_notified,
+            save_notified,
+        )
 
         current = _ytdlp.version.__version__
         latest = await get_latest_ytdlp_version()
-        if not latest or not is_newer(latest, current):
+        if not latest:
             return
-        if self._ytdlp_notified_version == latest:
-            return  # already pinged for this version — don't repeat
+        newer = is_newer(latest, current)
+        logger.info("yt-dlp version check: current=%s latest=%s newer=%s", current, latest, newer)
+        if not newer:
+            return
+        # Persisted across restarts so a restart doesn't re-notify the same version.
+        if load_notified() == latest:
+            return
         channel = self.get_channel(YTDLP_NOTIFY_CHANNEL_ID)
         if channel is None:
             logger.warning("yt-dlp 通知頻道 %s 找不到。", YTDLP_NOTIFY_CHANNEL_ID)
@@ -121,7 +130,7 @@ class MusicBot(commands.Bot):
                 "請在伺服器執行 `bash ~/discord-music-bot/scripts/update.sh` 更新，"
                 "以免 YouTube 解析失敗或被限流。"
             )
-            self._ytdlp_notified_version = latest
+            save_notified(latest)
             logger.info("Sent yt-dlp update notice: %s (current %s)", latest, current)
         except Exception as exc:
             logger.warning("yt-dlp 更新通知發送失敗：%s", exc)
