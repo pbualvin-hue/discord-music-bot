@@ -18,6 +18,8 @@ from services.youtube_service import (
     FFMPEG_BEFORE_OPTIONS,
     FFMPEG_LIVE_BEFORE_OPTIONS,
     VideoUnavailable,
+    cache_alt,
+    cached_alt,
     cleanup_download,
     get_playable_source,
     get_stream_url,
@@ -339,29 +341,34 @@ class MusicPlayer:
             except VideoUnavailable:
                 # Removed / private / region-blocked (common in old playlists after
                 # copyright takedowns, e.g. Tencent Music). The exact upload is gone,
-                # but the *song* usually has another live upload — re-search by title
-                # and play that instead of just skipping.
+                # but the *song* usually has another live upload. Reuse a previously
+                # found alternative if we have one (no request), else re-search once.
                 stream_url = None
+                orig_url = song.url
+                alt = cached_alt(orig_url)
                 title = (song.title or "").strip()
-                if title and title.lower() != "unknown":
+                if alt is None and title and title.lower() != "unknown":
                     logger.info("[Guild %s] '%s' 已下架，改搜替代版本…", guild_id, title)
                     try:
-                        alt = await search_song(title, song.requester)
+                        found = await search_song(title, song.requester)
                     except Exception:
-                        alt = None
-                    if alt and alt.url != song.url:
-                        try:
-                            stream_url = await get_playable_source(alt)
-                        except VideoUnavailable:
-                            stream_url = None
-                        if stream_url:
-                            song = alt
-                            state.current_song = song
-                            logger.info("[Guild %s] 改用替代版本播放：%s", guild_id, song.title)
+                        found = None
+                    if found and found.url != orig_url:
+                        alt = found
+                if alt is not None and alt.url != orig_url:
+                    try:
+                        stream_url = await get_playable_source(alt)
+                    except VideoUnavailable:
+                        stream_url = None
+                    if stream_url:
+                        cache_alt(orig_url, alt)  # remember for next replay/loop
+                        song = alt
+                        state.current_song = song
+                        logger.info("[Guild %s] 改用替代版本播放：%s", guild_id, song.title)
                 if not stream_url:
                     # no live alternative — skip, but DON'T count it toward the
                     # consecutive-failure stop (dead entry, not a network problem)
-                    logger.info("[Guild %s] 找不到可播的替代版本，跳過：%s", guild_id, title or song.url)
+                    logger.info("[Guild %s] 找不到可播的替代版本，跳過：%s", guild_id, title or orig_url)
                     state.current_song = None
                     await self.play_next(guild_id, _skip_count)
                     return

@@ -39,6 +39,42 @@ def _is_unavailable(err: str) -> bool:
     low = err.lower()
     return any(m in low for m in _UNAVAIL_MARKERS)
 
+
+# Negative cache: videos confirmed gone on every client are never re-requested
+# (big saver when a playlist loops/replays), and the working alternative we
+# found for each dead video is remembered so we don't re-search it every time.
+_DEAD: set = set()
+_ALT: dict = {}
+
+
+def is_known_dead(url: str) -> bool:
+    return url in _DEAD
+
+
+def cached_alt(url: str):
+    return _ALT.get(url)
+
+
+def cache_alt(url: str, song: Song) -> None:
+    _ALT[url] = song
+
+
+# Global rate gate: keep at least _MIN_GAP seconds between extraction/download
+# starts, so a burst of skips through dead videos doesn't hammer YouTube.
+_MIN_GAP = 1.0
+_rate_lock = asyncio.Lock()
+_last_start = 0.0
+
+
+async def _rate_gate() -> None:
+    global _last_start
+    async with _rate_lock:
+        loop = asyncio.get_event_loop()
+        wait = _MIN_GAP - (loop.time() - _last_start)
+        if wait > 0:
+            await asyncio.sleep(wait)
+        _last_start = asyncio.get_event_loop().time()
+
 # -hide_banner/-loglevel error silence FFmpeg's banner and the benign
 # "Will reconnect / Input-output error" chatter it prints when playback is
 # stopped or skipped mid-stream (we detect real failures in Python instead).
@@ -234,6 +270,7 @@ async def search_song(query: str, requester: str, source: str = "youtube") -> Op
         return _make_song(info, requester, source)
 
     try:
+        await _rate_gate()
         async with _EXTRACT_SEM:
             return await asyncio.wait_for(
                 loop.run_in_executor(None, _run), timeout=_YDL_TIMEOUT
@@ -465,6 +502,8 @@ async def _download_audio(song: Song) -> Optional[str]:
     requests for the same video share a single download (no .part collision).
     Raises VideoUnavailable if the video is permanently gone."""
     key = _download_target(song)
+    if key in _DEAD:
+        raise VideoUnavailable("known-dead (cached)")  # no request at all
     fut = _INFLIGHT.get(key)
     if fut is not None:
         return await fut  # a download for this video is already running — reuse it
@@ -478,7 +517,7 @@ async def _download_audio(song: Song) -> Optional[str]:
 
 # Alternate player clients tried when the default (tv) reports a video as
 # unavailable — many videos error on one client but play fine on another.
-_FALLBACK_CLIENTS = ["web", "android", "ios", "mweb"]
+_FALLBACK_CLIENTS = ["web", "android", "ios"]
 
 
 async def _do_download(song: Song, target: str) -> Optional[str]:
@@ -522,6 +561,7 @@ async def _do_download(song: Song, target: str) -> Optional[str]:
         raise VideoUnavailable(str(last_unavail))
 
     try:
+        await _rate_gate()
         async with _EXTRACT_SEM:
             return await asyncio.wait_for(
                 loop.run_in_executor(None, _run), timeout=_DL_TIMEOUT
@@ -530,6 +570,7 @@ async def _do_download(song: Song, target: str) -> Optional[str]:
         logger.error("Download timed out after %ss for: %s", _DL_TIMEOUT, song.title)
         return None
     except VideoUnavailable:
+        _DEAD.add(target)  # remember — never re-request this video
         raise
     except yt_dlp.utils.DownloadError as exc:
         logger.error("Download failed for '%s': %s", song.title, exc)
