@@ -476,12 +476,17 @@ async def _download_audio(song: Song) -> Optional[str]:
         _INFLIGHT.pop(key, None)
 
 
+# Alternate player clients tried when the default (tv) reports a video as
+# unavailable — many videos error on one client but play fine on another.
+_FALLBACK_CLIENTS = ["web", "android", "ios", "mweb"]
+
+
 async def _do_download(song: Song, target: str) -> Optional[str]:
     loop = asyncio.get_running_loop()
-    opts = _build_opts(_YDL_STREAM)
-    opts = {**opts, "outtmpl": os.path.join(_DL_DIR, "%(id)s.%(ext)s")}
+    base = _build_opts(_YDL_STREAM)
+    base = {**base, "outtmpl": os.path.join(_DL_DIR, "%(id)s.%(ext)s")}
 
-    def _run() -> Optional[str]:
+    def _extract(opts: dict) -> Optional[str]:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(target, download=True)
             if info is None:
@@ -494,9 +499,27 @@ async def _do_download(song: Song, target: str) -> Optional[str]:
             path = ydl.prepare_filename(info)
         if os.path.exists(path):
             return path
-        # Fallback: extension may differ from the template — match by video id.
         matches = glob.glob(os.path.join(_DL_DIR, f"{info.get('id', '')}.*"))
         return matches[0] if matches else None
+
+    def _run() -> Optional[str]:
+        # Try the default (tv) client first, then fall back to other clients if
+        # the video is reported unavailable — often a per-client quirk, not a real
+        # takedown. Only treat it as gone if every client agrees.
+        attempts = [
+            base,
+            {**base, "extractor_args": {"youtube": {"player_client": _FALLBACK_CLIENTS}}},
+        ]
+        last_unavail = None
+        for opts in attempts:
+            try:
+                return _extract(opts)
+            except yt_dlp.utils.DownloadError as exc:
+                if _is_unavailable(str(exc)):
+                    last_unavail = exc
+                    continue  # try next client set
+                raise
+        raise VideoUnavailable(str(last_unavail))
 
     try:
         async with _EXTRACT_SEM:
@@ -506,9 +529,9 @@ async def _do_download(song: Song, target: str) -> Optional[str]:
     except asyncio.TimeoutError:
         logger.error("Download timed out after %ss for: %s", _DL_TIMEOUT, song.title)
         return None
+    except VideoUnavailable:
+        raise
     except yt_dlp.utils.DownloadError as exc:
-        if _is_unavailable(str(exc)):
-            raise VideoUnavailable(str(exc))  # dead video — skip, don't retry/stream
         logger.error("Download failed for '%s': %s", song.title, exc)
         return None
     except Exception as exc:
