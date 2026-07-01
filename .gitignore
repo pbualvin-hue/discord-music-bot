@@ -31,8 +31,9 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Log 檔
+# Log 檔（含錯誤事件簿與其輪替備份）
 *.log
+*.log.*
 
 # SQLite 資料庫（包含播放統計，本地資料）
 data/*.db

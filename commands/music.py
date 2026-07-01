@@ -1450,6 +1450,37 @@ class MusicCog(commands.Cog, name="Music"):
         )
         await interaction.followup.send(embed=embed, ephemeral=True)
 
+    # ── /errors ───────────────────────────────────────────────────────
+
+    @app_commands.command(name="errors", description="錯誤事件簿 — 檢視最近記錄的錯誤（管理員用）")
+    @app_commands.describe(count="顯示幾筆（預設 10，最多 20）", clear="顯示後是否清空緩衝")
+    async def errors(self, interaction: discord.Interaction, count: int = 10, clear: bool = False) -> None:
+        perms = getattr(interaction.user, "guild_permissions", None)
+        if not (perms and perms.administrator):
+            await interaction.response.send_message("❌ 僅管理員可用。", ephemeral=True)
+            return
+        from utils.logger import ERROR_LOG_PATH, clear_errors, get_recent_errors
+
+        count = max(1, min(count, 20))
+        events = get_recent_errors(count)
+        if not events:
+            await interaction.response.send_message(
+                f"✅ 目前緩衝中沒有錯誤記錄。\n完整歷史檔：`{ERROR_LOG_PATH}`（伺服器）",
+                ephemeral=True,
+            )
+            return
+        body = "\n".join(events)
+        if len(body) > 1700:
+            body = "…（較舊的已省略）\n" + body[-1700:]
+        note = "（已清空緩衝）" if clear else ""
+        if clear:
+            clear_errors()
+        await interaction.response.send_message(
+            f"🐞 **錯誤事件簿** — 最近 {len(events)} 筆 {note}\n"
+            f"```\n{body}\n```\n完整歷史檔：`{ERROR_LOG_PATH}`（伺服器，重啟不丟）",
+            ephemeral=True,
+        )
+
     # ── /help ─────────────────────────────────────────────────────────
 
     @app_commands.command(name="help", description="顯示所有指令說明")

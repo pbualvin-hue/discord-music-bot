@@ -1,8 +1,11 @@
+import asyncio
+
 import discord
 from discord.ext import commands, tasks
 
 from config import (
     DISCORD_TOKEN,
+    ERROR_LOG_CHANNEL_ID,
     GUILD_ID,
     YTDLP_CHECK_INTERVAL_HOURS,
     YTDLP_NOTIFY_CHANNEL_ID,
@@ -58,12 +61,43 @@ class MusicBot(commands.Bot):
         logger.info("Cookies: %s", COOKIES_FILE or "(none)")
         logger.info("YouTube proxy: %s", YT_PROXY or "(none)")
         logger.info("Bot ready: %s (ID: %s)", self.user, self.user.id)
+        self._wire_error_sink()
         await self.change_presence(
             activity=discord.Activity(
                 type=discord.ActivityType.listening,
                 name="/play",
             )
         )
+
+    def _wire_error_sink(self) -> None:
+        """Mirror each captured ERROR to a Discord channel in real time (opt-in)."""
+        if not ERROR_LOG_CHANNEL_ID:
+            return
+        from utils.logger import set_error_sink
+        loop = self.loop
+
+        def _sink(text: str) -> None:
+            # Called from the logging handler (possibly off the loop thread);
+            # schedule the actual send on the bot loop, swallowing all errors.
+            try:
+                if loop.is_running():
+                    asyncio.run_coroutine_threadsafe(self._post_error(text), loop)
+            except Exception:
+                pass
+
+        set_error_sink(_sink)
+        logger.info("Error log channel: %s", ERROR_LOG_CHANNEL_ID)
+
+    async def _post_error(self, text: str) -> None:
+        # MUST NOT log at ERROR level here (would recurse into the sink).
+        try:
+            channel = self.get_channel(ERROR_LOG_CHANNEL_ID)
+            if channel is None:
+                return
+            body = text if len(text) <= 1800 else text[:1800] + " …"
+            await channel.send(f"🐞 錯誤事件\n```\n{body}\n```")
+        except Exception:
+            pass
 
     @tasks.loop(hours=24)
     async def _ytdlp_update_check(self) -> None:

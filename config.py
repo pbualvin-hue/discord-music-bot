@@ -53,6 +53,12 @@ YTDLP_NOTIFY_CHANNEL_ID: int | None = (
 # How often (hours) to check PyPI for a newer yt-dlp version.
 YTDLP_CHECK_INTERVAL_HOURS: int = int(os.getenv("YTDLP_CHECK_INTERVAL_HOURS", "24"))
 
+# Optional: Discord channel ID where the bot posts each ERROR in real time
+# (the "error event book"). Errors are always recorded to data/errors.log and
+# viewable via /errors regardless; this just mirrors them to a channel live.
+_raw_err_ch = os.getenv("ERROR_LOG_CHANNEL_ID", "")
+ERROR_LOG_CHANNEL_ID: int | None = int(_raw_err_ch) if _raw_err_ch.strip() else None
+
 if not DISCORD_TOKEN:
     raise ValueError(
         "DISCORD_TOKEN is not set. "
