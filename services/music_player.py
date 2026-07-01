@@ -336,14 +336,35 @@ class MusicPlayer:
             self._clear_prefetch(state)    # stale prefetch for a different song
             try:
                 stream_url = await get_playable_source(song)
-            except VideoUnavailable as exc:
-                # Removed / private / region-blocked video (common in old playlists
-                # after copyright takedowns). Skip it, but DON'T count it toward the
-                # consecutive-failure stop — it's a dead entry, not a network problem.
-                logger.info("[Guild %s] '%s' 已下架/無法播放，跳過：%s", guild_id, song.title, exc)
-                state.current_song = None
-                await self.play_next(guild_id, _skip_count)
-                return
+            except VideoUnavailable:
+                # Removed / private / region-blocked (common in old playlists after
+                # copyright takedowns, e.g. Tencent Music). The exact upload is gone,
+                # but the *song* usually has another live upload — re-search by title
+                # and play that instead of just skipping.
+                stream_url = None
+                title = (song.title or "").strip()
+                if title and title.lower() != "unknown":
+                    logger.info("[Guild %s] '%s' 已下架，改搜替代版本…", guild_id, title)
+                    try:
+                        alt = await search_song(title, song.requester)
+                    except Exception:
+                        alt = None
+                    if alt and alt.url != song.url:
+                        try:
+                            stream_url = await get_playable_source(alt)
+                        except VideoUnavailable:
+                            stream_url = None
+                        if stream_url:
+                            song = alt
+                            state.current_song = song
+                            logger.info("[Guild %s] 改用替代版本播放：%s", guild_id, song.title)
+                if not stream_url:
+                    # no live alternative — skip, but DON'T count it toward the
+                    # consecutive-failure stop (dead entry, not a network problem)
+                    logger.info("[Guild %s] 找不到可播的替代版本，跳過：%s", guild_id, title or song.url)
+                    state.current_song = None
+                    await self.play_next(guild_id, _skip_count)
+                    return
 
         if not stream_url:
             logger.error("[Guild %s] No source for '%s', skipping.", guild_id, song.title)
