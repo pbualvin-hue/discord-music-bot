@@ -2,6 +2,7 @@ import asyncio
 import glob
 import os
 import tempfile
+import time
 from typing import Optional
 
 import yt_dlp
@@ -17,6 +18,11 @@ _DL_DIR = os.path.join(tempfile.gettempdir(), "discord-music-bot-cache")
 os.makedirs(_DL_DIR, exist_ok=True)
 # Full download over the tunnel takes longer than a metadata fetch.
 _DL_TIMEOUT = 120.0
+# Videos longer than this are streamed instead of downloaded — a full download
+# of a long video (episode / DJ set) means a long startup delay, wasted home
+# bandwidth, and likely a download timeout. Short songs still download for
+# gapless playback. 0/unknown duration falls through to download.
+_DOWNLOAD_MAX_DURATION = 1200  # seconds (20 min)
 
 # Concurrent requests for the same video are coalesced into one download, so a
 # prefetch and an on-demand fetch can't race and collide on the same .part file.
@@ -499,6 +505,18 @@ def clear_download_cache() -> None:
             pass
 
 
+def _sweep_stale_parts() -> None:
+    """Remove orphaned *.part files (aborted/timed-out downloads). Only touches
+    files older than 5 min, so an in-progress download's .part is never deleted."""
+    now = time.time()
+    for f in glob.glob(os.path.join(_DL_DIR, "*.part")):
+        try:
+            if now - os.path.getmtime(f) > 300:
+                os.remove(f)
+        except OSError:
+            pass
+
+
 async def _download_audio(song: Song) -> Optional[str]:
     """Download *song*'s audio and return the local file path. Concurrent
     requests for the same video share a single download (no .part collision).
@@ -524,6 +542,7 @@ _FALLBACK_CLIENTS = ["web", "android", "ios"]
 
 async def _do_download(song: Song, target: str) -> Optional[str]:
     loop = asyncio.get_running_loop()
+    _sweep_stale_parts()  # reap orphaned .part files from earlier timeouts
     base = _build_opts(_YDL_STREAM)
     base = {**base, "outtmpl": os.path.join(_DL_DIR, "%(id)s.%(ext)s")}
 
@@ -588,7 +607,8 @@ async def get_playable_source(song: Song) -> Optional[str]:
     proxy and stutter) or a direct stream URL (everything else).
 
     Falls back to streaming if the download fails."""
-    if YT_PROXY and not song.is_live and song.source in ("youtube", "spotify"):
+    long_video = bool(song.duration) and song.duration > _DOWNLOAD_MAX_DURATION
+    if YT_PROXY and not song.is_live and not long_video and song.source in ("youtube", "spotify"):
         path = await _download_audio(song)
         if path:
             logger.info("Downloaded '%s' for gapless local playback", song.title)
