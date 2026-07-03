@@ -88,6 +88,12 @@ FFMPEG_LIVE_BEFORE_OPTIONS = (
 )
 FFMPEG_BASE_OPTIONS = "-vn"
 
+# For LOCAL downloaded files (Option A): -reconnect is an http-only option and
+# makes FFmpeg abort with "Option reconnect not found" on a file input, which
+# looked like an instant "stream failure". Local files need neither reconnect
+# nor a proxy — just silence the banner.
+FFMPEG_LOCAL_BEFORE_OPTIONS = "-hide_banner -loglevel error"
+
 # yt-dlp hangs indefinitely if network calls stall.
 # This timeout (seconds) is applied to every run_in_executor call so Discord
 # always gets a response, even when YouTube is slow or blocking.

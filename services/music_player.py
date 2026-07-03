@@ -17,12 +17,14 @@ from services.stats_service import record_play
 from services.youtube_service import (
     FFMPEG_BEFORE_OPTIONS,
     FFMPEG_LIVE_BEFORE_OPTIONS,
+    FFMPEG_LOCAL_BEFORE_OPTIONS,
     VideoUnavailable,
     cache_alt,
     cached_alt,
     cleanup_download,
     get_playable_source,
     get_stream_url,
+    is_cached_file,
     search_song,
 )
 from utils.logger import logger
@@ -432,7 +434,10 @@ class MusicPlayer:
 
         start_at = self._adjust_for_sponsor(state, start_at)
         ffmpeg_opts = build_ffmpeg_options(state.audio_filter)
-        if song.source == "bilibili":
+        if is_cached_file(stream_url):
+            # Local downloaded file: NO -reconnect (http-only, aborts ffmpeg) / no proxy.
+            before_opts = FFMPEG_LOCAL_BEFORE_OPTIONS
+        elif song.source == "bilibili":
             from services.bilibili_service import BILI_FFMPEG_HEADERS
             before_opts = f'-headers "{BILI_FFMPEG_HEADERS}" {FFMPEG_BEFORE_OPTIONS}'
         elif song.is_live:
@@ -443,6 +448,7 @@ class MusicPlayer:
             before_opts = f"-ss {start_at:.2f} {before_opts}"
         # Route the googlevideo fetch through the same proxy yt-dlp used, so the
         # IP that requested the URL matches the IP that streams it (else 403).
+        # (Never for local files — no googlevideo in a file path anyway.)
         if YT_PROXY and "googlevideo.com" in stream_url:
             before_opts = f'-http_proxy "{YT_PROXY}" {before_opts}'
         try:
