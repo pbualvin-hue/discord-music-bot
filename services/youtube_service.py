@@ -46,6 +46,13 @@ def _is_unavailable(err: str) -> bool:
     return any(m in low for m in _UNAVAIL_MARKERS)
 
 
+def _is_forbidden(err: str) -> bool:
+    """A 403 on the media URL — usually the tv/TVHTML5 client being asked for a
+    PO token, NOT a dead video. Worth retrying with a different player client."""
+    low = err.lower()
+    return "403" in low or "forbidden" in low
+
+
 # Negative cache: videos confirmed gone on every client are never re-requested
 # (big saver when a playlist loops/replays), and the working alternative we
 # found for each dead video is remembered so we don't re-search it every time.
@@ -563,22 +570,32 @@ async def _do_download(song: Song, target: str) -> Optional[str]:
         return matches[0] if matches else None
 
     def _run() -> Optional[str]:
-        # Try the default (tv) client first, then fall back to other clients if
-        # the video is reported unavailable — often a per-client quirk, not a real
-        # takedown. Only treat it as gone if every client agrees.
+        # Try the default (tv) client first, then fall back to other clients on
+        # either (a) "unavailable" — often a per-client quirk, not a real takedown,
+        # or (b) a 403 on the media URL — the tv client increasingly needs a PO
+        # token, while web/android/ios often still serve the audio fine.
         attempts = [
             base,
             {**base, "extractor_args": {"youtube": {"player_client": _FALLBACK_CLIENTS}}},
         ]
         last_unavail = None
+        last_403 = None
         for opts in attempts:
             try:
                 return _extract(opts)
             except yt_dlp.utils.DownloadError as exc:
-                if _is_unavailable(str(exc)):
+                msg = str(exc)
+                if _is_unavailable(msg):
                     last_unavail = exc
                     continue  # try next client set
+                if _is_forbidden(msg):
+                    last_403 = exc
+                    continue  # 403 — try another client before giving up
                 raise
+        if last_403 is not None:
+            # A 403 does NOT mean the video is gone — re-raise as a normal download
+            # error so the caller falls back to streaming and we never cache it dead.
+            raise last_403
         raise VideoUnavailable(str(last_unavail))
 
     try:
