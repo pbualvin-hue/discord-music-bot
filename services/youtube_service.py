@@ -542,9 +542,13 @@ async def _download_audio(song: Song) -> Optional[str]:
         _INFLIGHT.pop(key, None)
 
 
-# Alternate player clients tried when the default (tv) reports a video as
-# unavailable — many videos error on one client but play fine on another.
-_FALLBACK_CLIENTS = ["web", "android", "ios"]
+# Alternate player clients, tried ONE AT A TIME (a merged client list would mix
+# formats and yt-dlp could still pick a 403-ing one).
+# Order matters: android_vr / web_embedded are first because, per the yt-dlp PO
+# Token Guide, they are currently the only clients that do NOT require a PO token
+# for the media (GVS) URLs — i.e. they dodge the 403 without any token provider.
+# web / android / ios DO need PO tokens for GVS, so they are last-resort.
+_FALLBACK_CLIENTS = ["android_vr", "web_embedded", "web", "android", "ios"]
 
 
 async def _do_download(song: Song, target: str) -> Optional[str]:
@@ -574,9 +578,9 @@ async def _do_download(song: Song, target: str) -> Optional[str]:
         # either (a) "unavailable" — often a per-client quirk, not a real takedown,
         # or (b) a 403 on the media URL — the tv client increasingly needs a PO
         # token, while web/android/ios often still serve the audio fine.
-        attempts = [
-            base,
-            {**base, "extractor_args": {"youtube": {"player_client": _FALLBACK_CLIENTS}}},
+        attempts = [base] + [
+            {**base, "extractor_args": {"youtube": {"player_client": [c]}}}
+            for c in _FALLBACK_CLIENTS
         ]
         last_unavail = None
         last_403 = None
